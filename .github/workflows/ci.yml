@@ -12,13 +12,61 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install agent dependencies
+        run: python -m pip install -r agent/requirements.txt
+
       - name: Check Python syntax
         run: python -m py_compile agent/netops_agent.py
+
+      - name: Smoke test live agent
+        run: |
+          python - <<'PY'
+          import importlib.util
+          from pathlib import Path
+
+          path = Path("agent/netops_agent.py")
+          spec = importlib.util.spec_from_file_location("netops_agent", path)
+          module = importlib.util.module_from_spec(spec)
+          assert spec and spec.loader
+          spec.loader.exec_module(module)
+
+          module.init_db()
+          payload = module.dashboard_payload()
+          assert "overview" in payload
+          assert "devices" in payload
+          assert "alerts" in payload
+          assert "system" in payload
+          assert isinstance(payload["devices"], list)
+          print("NetOps agent smoke test passed")
+          PY
 
       - name: Check browser JavaScript syntax
         run: |
           node --check app.js
           node --check demo-data.js
+
+      - name: Validate HTML wiring
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          html = Path("index.html").read_text(encoding="utf-8")
+          js = Path("app.js").read_text(encoding="utf-8")
+          ids = set(re.findall(r'id="([^"]+)"', html))
+          js_ids = set(re.findall(r'\$\("([^"]+)"\)', js))
+          missing = sorted(js_ids - ids)
+          assert not missing, f"Missing DOM ids: {missing}"
+          assert 'href="./styles.css"' in html
+          assert 'src="./app.js"' in html
+          assert 'src="./demo-data.js"' in html
+          print("HTML/JS wiring test passed")
+          PY
 
       - name: Validate JSON
         run: |

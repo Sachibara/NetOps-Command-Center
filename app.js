@@ -120,15 +120,28 @@
     $("agentDetail").textContent = detail;
   }
 
+  function cloneWorkspace() {
+    const saved = localStorage.getItem("netops_workspace_state");
+    if (saved) {
+      try { return JSON.parse(saved); } catch (_) {}
+    }
+    return JSON.parse(JSON.stringify(window.NETOPS_DEMO));
+  }
+
+  function persistWorkspace() {
+    if (state.mode === "demo" && state.data) {
+      localStorage.setItem("netops_workspace_state", JSON.stringify(state.data));
+    }
+  }
+
   async function loadData(showToast = false) {
     if (state.mode === "demo") {
-      state.data = JSON.parse(JSON.stringify(window.NETOPS_DEMO));
-      // Keep relative-time labels fresh while preserving the representative values.
+      state.data = cloneWorkspace();
       state.data.generated_at = new Date().toISOString();
       state.lastRefresh = new Date();
-      setAgentStatus("", "Demo mode", "Portfolio telemetry");
+      setAgentStatus("", "Browser workspace", "Saved locally in this browser");
       renderAll();
-      if (showToast) toast("Dashboard refreshed", "Representative demo telemetry loaded.");
+      if (showToast) toast("Workspace refreshed", "Your browser-saved network workspace is ready.");
       return;
     }
 
@@ -610,7 +623,7 @@
     $("configPorts").value = (config.service_ports || []).join(", ");
     $("settingsModeNote").textContent = state.mode === "live"
       ? "Saving updates the local NetOps Agent configuration."
-      : "Demo mode previews settings only; use Live Agent Mode to persist them.";
+      : "Browser workspace settings persist locally; use Live Agent Mode for real network monitoring.";
   }
 
   $("saveSettingsButton").addEventListener("click", async () => {
@@ -636,7 +649,8 @@
         max_scan_hosts: body.max_scan_hosts,
         service_ports: body.service_ports
       };
-      toast("Demo settings updated", "These changes last only until the page is reloaded.");
+      persistWorkspace();
+      toast("Workspace settings updated", "Monitoring preferences were saved in this browser.");
       renderAll();
       return;
     }
@@ -674,7 +688,7 @@
 
   async function scanNetwork() {
     if (state.mode === "demo") {
-      toast("Demo scan complete", "Representative devices and telemetry are already loaded.");
+      toast("Browser workspace", "Real network discovery requires the local agent; your saved workspace remains available.");
       return;
     }
     $("scanButton").disabled = true;
@@ -701,7 +715,7 @@
     $("pingOutput").textContent = "Running ping…";
     if (state.mode === "demo") {
       await new Promise((r) => setTimeout(r, 450));
-      $("pingOutput").textContent = `PING ${host}\nReply received\nPackets: Sent = 4, Received = 4, Lost = 0 (0% loss)\nAverage round-trip = 12.4 ms\n\nDemo mode: start the local agent for a real ICMP test.`;
+      $("pingOutput").textContent = `PING ${host}\nReply received\nPackets: Sent = 4, Received = 4, Lost = 0 (0% loss)\nAverage round-trip = 12.4 ms\n\nBrowser workspace simulation: start the local agent for a real ICMP test.`;
       return;
     }
     try {
@@ -716,7 +730,7 @@
     $("dnsOutput").textContent = "Resolving…";
     if (state.mode === "demo") {
       await new Promise((r) => setTimeout(r, 300));
-      $("dnsOutput").textContent = `Host: ${host}\nA: 93.184.216.34\n\nDemo mode: start the local agent for a real resolver lookup.`;
+      $("dnsOutput").textContent = `Host: ${host}\nA: 93.184.216.34\n\nBrowser workspace simulation: start the local agent for a real resolver lookup.`;
       return;
     }
     try {
@@ -732,7 +746,7 @@
     $("portOutput").textContent = "Testing TCP connection…";
     if (state.mode === "demo") {
       await new Promise((r) => setTimeout(r, 300));
-      $("portOutput").textContent = `${host}:${port} — OPEN\nTCP handshake completed in 18 ms\n\nDemo mode: start the local agent for a real service check.`;
+      $("portOutput").textContent = `${host}:${port} — OPEN\nTCP handshake completed in 18 ms\n\nBrowser workspace simulation: start the local agent for a real service check.`;
       return;
     }
     try {
@@ -754,7 +768,7 @@
         + "2   10.20.0.1         8 ms\n"
         + "3   203.0.113.1      14 ms\n"
         + "4   " + host + "      21 ms\n\n"
-        + "Demo mode: run the local agent for a real routed path.";
+        + "Browser workspace simulation: run the local agent for a real routed path.";
       return;
     }
     try {
@@ -878,9 +892,10 @@
     if (state.mode === "demo") {
       const device = (state.data.devices || []).find((d) => d.ip === ip);
       if (device) Object.assign(device, body);
+      persistWorkspace();
       $("deviceDialog").close();
       renderAll();
-      toast("Demo metadata updated", "Changes are kept only for the current demo session.");
+      toast("Device metadata saved", "Changes persist in this browser workspace.");
       return;
     }
 

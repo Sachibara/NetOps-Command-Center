@@ -43,6 +43,7 @@
         <button class="nav-item" data-page="alerts"><span>△</span>Alerts</button>
         <button class="nav-item" data-page="tools"><span>⌁</span>Troubleshooting</button>
         <button class="nav-item" data-page="inventory"><span>▤</span>Inventory</button>
+        <button class="nav-item" data-page="settings"><span>⚙</span>Settings</button>
         <button class="nav-item" data-page="about"><span>ⓘ</span>About</button>
       </nav>
 
@@ -448,6 +449,46 @@
                 <tbody id="inventoryTableBody"></tbody>
               </table>
             </div>
+          </article>
+        </section>
+
+
+        <section class="page" data-page-panel="settings">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Monitoring policy</p>
+              <h2>Agent settings</h2>
+              <p>Configure the authorized subnet, polling cadence, alert thresholds, and service checks used by the local monitoring agent.</p>
+            </div>
+          </div>
+
+          <div class="settings-layout">
+            <article class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">Discovery</p><h3>Network scope</h3></div></div>
+              <div class="config-grid">
+                <label class="field-stack"><span>Monitored subnet</span><input id="configSubnet" placeholder="auto or 192.168.1.0/24"></label>
+                <label class="field-stack"><span>Monitor interval (seconds)</span><input id="configInterval" type="number" min="5" max="3600"></label>
+                <label class="field-stack"><span>Scan timeout (ms)</span><input id="configTimeout" type="number" min="150" max="5000"></label>
+                <label class="field-stack"><span>Maximum scan hosts</span><input id="configMaxHosts" type="number" min="1" max="4096"></label>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">Alerting</p><h3>Operational thresholds</h3></div></div>
+              <div class="config-grid">
+                <label class="field-stack"><span>Latency warning (ms)</span><input id="configLatency" type="number" min="1" max="10000"></label>
+                <label class="field-stack"><span>Packet-loss warning (%)</span><input id="configLoss" type="number" min="0" max="100"></label>
+                <label class="field-stack config-wide"><span>TCP service ports</span><input id="configPorts" placeholder="22, 53, 80, 443, 445, 3389"></label>
+              </div>
+            </article>
+          </div>
+
+          <article class="panel settings-save-panel">
+            <div>
+              <strong>Apply monitoring configuration</strong>
+              <p class="subtle" id="settingsModeNote">Changes affect the live agent only.</p>
+            </div>
+            <button class="primary-button" id="saveSettingsButton" type="button">Save settings</button>
           </article>
         </section>
 

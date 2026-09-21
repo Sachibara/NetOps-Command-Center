@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#07121f">
   <meta name="description" content="NetOps Command Center - network monitoring, device inventory, alerts, and troubleshooting dashboard.">
   <title>NetOps Command Center</title>
-  <link rel="stylesheet" href="/styles.css">
-  <script src="/demo-data.js" defer></script>
-  <script src="/app.js" defer></script>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./demo-data.js" defer></script>
+  <script src="./app.js" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -39,6 +39,7 @@
       <nav class="sidebar-nav" aria-label="Primary">
         <button class="nav-item active" data-page="overview"><span>▦</span>Overview</button>
         <button class="nav-item" data-page="devices"><span>◫</span>Devices</button>
+        <button class="nav-item" data-page="topology"><span>⌬</span>Topology</button>
         <button class="nav-item" data-page="alerts"><span>△</span>Alerts</button>
         <button class="nav-item" data-page="tools"><span>⌁</span>Troubleshooting</button>
         <button class="nav-item" data-page="inventory"><span>▤</span>Inventory</button>
@@ -182,6 +183,22 @@
             </article>
           </div>
 
+
+          <article class="panel system-health-panel">
+            <div class="panel-heading">
+              <div><p class="eyebrow">Agent host</p><h3>Infrastructure health</h3></div>
+              <span class="subtle" id="systemHostLabel">Monitoring node</span>
+            </div>
+            <div class="system-metrics">
+              <div><span>CPU</span><strong id="systemCpu">—</strong><meter id="systemCpuMeter" min="0" max="100" value="0"></meter></div>
+              <div><span>Memory</span><strong id="systemMemory">—</strong><meter id="systemMemoryMeter" min="0" max="100" value="0"></meter></div>
+              <div><span>Disk</span><strong id="systemDisk">—</strong><meter id="systemDiskMeter" min="0" max="100" value="0"></meter></div>
+              <div><span>Download</span><strong id="systemDownload">—</strong><small id="systemDownloadTotal">Total —</small></div>
+              <div><span>Upload</span><strong id="systemUpload">—</strong><small id="systemUploadTotal">Total —</small></div>
+              <div><span>Agent uptime</span><strong id="systemUptime">—</strong><small id="systemPlatform">—</small></div>
+            </div>
+          </article>
+
           <div class="dashboard-grid secondary">
             <article class="panel">
               <div class="panel-heading">
@@ -255,6 +272,33 @@
               </table>
             </div>
           </article>
+        </section>
+
+
+        <section class="page" data-page-panel="topology">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Network visualization</p>
+              <h2>Topology</h2>
+              <p>An operational view of discovered infrastructure, grouped around the monitored gateway and network services.</p>
+            </div>
+            <button class="ghost-button" id="topologyRefreshButton">Refresh topology</button>
+          </div>
+
+          <div class="topology-layout">
+            <article class="panel topology-panel">
+              <div class="panel-heading">
+                <div><p class="eyebrow">Live estate</p><h3>Network map</h3></div>
+                <span class="subtle" id="topologySubnet">—</span>
+              </div>
+              <div class="topology-canvas" id="topologyCanvas"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">Summary</p><h3>Topology insights</h3></div></div>
+              <div class="topology-summary" id="topologySummary"></div>
+            </article>
+          </div>
         </section>
 
         <section class="page" data-page-panel="alerts">
@@ -349,6 +393,27 @@
                 <button class="primary-button" type="submit">Calculate</button>
               </form>
               <pre class="tool-output" id="subnetOutput">Ready.</pre>
+            </article>
+
+            <article class="panel tool-card">
+              <div class="tool-icon">TR</div>
+              <h3>Traceroute</h3>
+              <p>Trace the routed path toward a host and identify intermediate hops.</p>
+              <form id="tracerouteForm" class="tool-form">
+                <input id="tracerouteHost" required placeholder="8.8.8.8 or example.com">
+                <button class="primary-button" type="submit">Trace route</button>
+              </form>
+              <pre class="tool-output" id="tracerouteOutput">Ready.</pre>
+            </article>
+
+            <article class="panel tool-card">
+              <div class="tool-icon">RT</div>
+              <h3>Route table</h3>
+              <p>Inspect the monitoring node's active routing table and interfaces.</p>
+              <div class="tool-form">
+                <button class="primary-button" id="routeTableButton" type="button">Load routes & interfaces</button>
+              </div>
+              <pre class="tool-output" id="routeTableOutput">Ready.</pre>
             </article>
           </div>
         </section>
@@ -474,6 +539,43 @@
       <div class="dialog-actions">
         <button class="ghost-button" value="cancel">Cancel</button>
         <button class="primary-button" id="saveConnectionButton" value="default">Save connection</button>
+      </div>
+    </form>
+  </dialog>
+
+
+  <dialog class="connection-dialog device-dialog" id="deviceDialog">
+    <form method="dialog" class="dialog-card device-dialog-card" id="deviceForm">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">Device details</p>
+          <h2 id="deviceDialogTitle">Device</h2>
+        </div>
+        <button class="icon-button" value="cancel" aria-label="Close">×</button>
+      </div>
+
+      <div class="device-detail-grid">
+        <div><span>Status</span><strong id="detailStatus">—</strong></div>
+        <div><span>IP address</span><strong id="detailIp">—</strong></div>
+        <div><span>Latency</span><strong id="detailLatency">—</strong></div>
+        <div><span>24h availability</span><strong id="detailAvailability">—</strong></div>
+        <div><span>First seen</span><strong id="detailFirstSeen">—</strong></div>
+        <div><span>Last seen</span><strong id="detailLastSeen">—</strong></div>
+      </div>
+
+      <canvas id="deviceHistoryChart" width="900" height="220" aria-label="Device latency history"></canvas>
+
+      <div class="device-edit-grid">
+        <label class="field-stack"><span>Hostname</span><input id="detailHostname"></label>
+        <label class="field-stack"><span>Vendor</span><input id="detailVendor"></label>
+        <label class="field-stack"><span>Role</span><input id="detailRole"></label>
+        <label class="field-stack"><span>Platform</span><input id="detailPlatform"></label>
+      </div>
+
+      <div class="dialog-note" id="detailServices">Services: —</div>
+      <div class="dialog-actions">
+        <button class="ghost-button" value="cancel">Close</button>
+        <button class="primary-button" id="saveDeviceButton" value="default">Save metadata</button>
       </div>
     </form>
   </dialog>

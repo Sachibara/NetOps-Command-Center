@@ -275,3 +275,50 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(102,
   .tool-form,.tool-form.two-input{grid-template-columns:1fr}.tool-form button{width:100%}.section-actions{flex-direction:column}.section-actions button{width:100%}
 }
 @media(max-width:420px){.stats-grid,.alert-summary-grid,.inventory-summary{grid-template-columns:1fr}}
+
+
+/* Completion features */
+.system-health-panel{margin-top:16px}
+.system-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.system-metrics>div{padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.02)}
+.system-metrics span,.system-metrics strong,.system-metrics small{display:block}
+.system-metrics span{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.system-metrics strong{font-size:1rem;margin:3px 0}
+.system-metrics small{font-size:.62rem;color:var(--subtle)}
+.system-metrics meter{width:100%;height:7px;accent-color:var(--cyan)}
+.topology-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,.5fr);gap:16px}
+.topology-canvas{position:relative;min-height:560px;border:1px solid var(--border);border-radius:14px;overflow:auto;background:radial-gradient(circle at 50% 42%,rgba(102,217,255,.08),transparent 35%),rgba(5,14,24,.52)}
+.topology-network{position:relative;min-width:760px;min-height:540px}
+.topology-link{position:absolute;height:1px;background:linear-gradient(90deg,rgba(102,217,255,.18),rgba(102,217,255,.5));transform-origin:0 0;z-index:1}
+.topology-node{position:absolute;z-index:2;width:150px;min-height:74px;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(15,31,49,.97);box-shadow:0 12px 30px rgba(0,0,0,.18);cursor:pointer}
+.topology-node:hover{border-color:var(--border-strong);transform:translateY(-1px)}
+.topology-node.gateway{border-color:rgba(102,217,255,.35);box-shadow:0 0 30px rgba(102,217,255,.10)}
+.topology-node.offline{border-color:rgba(255,116,133,.28)}
+.topology-node strong,.topology-node span{display:block}
+.topology-node strong{font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topology-node span{font-size:.61rem;color:var(--muted);margin-top:2px}
+.topology-node .node-status{margin-top:7px;display:inline-flex}
+.topology-summary{display:grid;gap:8px}
+.topology-insight{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.topology-insight:last-child{border-bottom:0}
+.topology-insight span{font-size:.7rem;color:var(--muted)}
+.topology-insight strong{font-size:.75rem;text-align:right}
+.data-table tbody tr.device-row{cursor:pointer}
+.data-table tbody tr.device-row:hover{background:rgba(102,217,255,.06)}
+.device-dialog{max-width:min(860px,calc(100vw - 30px))}
+.device-dialog-card{max-height:min(88vh,900px);overflow:auto}
+.device-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:14px}
+.device-detail-grid>div{padding:10px;border:1px solid var(--border);border-radius:11px;background:rgba(255,255,255,.02)}
+.device-detail-grid span,.device-detail-grid strong{display:block}
+.device-detail-grid span{font-size:.61rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.device-detail-grid strong{font-size:.75rem;margin-top:3px}
+#deviceHistoryChart{display:block;width:100%;height:220px;border:1px solid var(--border);border-radius:12px;background:#06101c;margin:4px 0 14px}
+.device-edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(max-width:1180px){
+  .system-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .topology-layout{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+  .system-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .device-detail-grid,.device-edit-grid{grid-template-columns:1fr}
+}

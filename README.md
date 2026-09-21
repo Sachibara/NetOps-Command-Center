@@ -12,11 +12,15 @@ The cloud-hosted dashboard does **not** pretend it can scan a private network.
 ## Highlights
 
 - Network-health dashboard
+- Agent host CPU, memory, disk, uptime, and bandwidth telemetry
 - Device discovery across a configured IPv4 subnet
 - ICMP reachability monitoring
 - Round-trip latency and packet-loss tracking
 - Lightweight TCP service discovery
 - Device inventory and CSV export
+- Device-detail view with 24-hour availability and latency history
+- Editable device hostname/vendor/role/platform metadata
+- Inferred network topology visualization
 - Offline-device alerts
 - High-latency alerts
 - Packet-loss alerts
@@ -25,7 +29,10 @@ The cloud-hosted dashboard does **not** pretend it can scan a private network.
 - Ping diagnostic tool
 - DNS lookup tool
 - TCP port connectivity test
+- Traceroute
+- Route-table and interface inspection
 - IPv4 subnet calculator
+- In-dashboard monitoring settings
 - Responsive browser interface
 - REST API through FastAPI
 - Background monitoring worker
@@ -178,10 +185,17 @@ Selected endpoints:
 ```text
 GET  /api/health
 GET  /api/dashboard
+GET  /api/system
+GET  /api/network
+GET  /api/config
+PUT  /api/config
+GET  /api/devices/{ip}
+PUT  /api/devices/{ip}
 POST /api/scan
 POST /api/tools/ping
 POST /api/tools/dns
 POST /api/tools/port
+POST /api/tools/traceroute
 ```
 
 Example health check:
@@ -202,8 +216,9 @@ The runtime database is excluded from Git through `.gitignore`.
 
 Stored data includes:
 
-- device inventory
-- monitoring samples
+- device inventory and editable metadata
+- monitoring samples and 24-hour availability
+- agent host resource/network samples
 - active/resolved alerts
 - timestamps and availability state
 

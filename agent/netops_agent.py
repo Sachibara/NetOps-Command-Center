@@ -72,6 +72,32 @@ def load_config() -> dict[str, Any]:
     return config
 
 
+
+def save_config(config: dict[str, Any]) -> dict[str, Any]:
+    normalized = DEFAULT_CONFIG.copy()
+    normalized.update({
+        "subnet": str(config.get("subnet", "auto")).strip() or "auto",
+        "monitor_interval_seconds": max(5, min(3600, int(config.get("monitor_interval_seconds", 30)))),
+        "warning_latency_ms": max(1, min(10000, float(config.get("warning_latency_ms", 100)))),
+        "warning_packet_loss_percent": max(0, min(100, float(config.get("warning_packet_loss_percent", 20)))),
+        "scan_timeout_ms": max(150, min(5000, int(config.get("scan_timeout_ms", 550)))),
+        "max_scan_hosts": max(1, min(4096, int(config.get("max_scan_hosts", 256)))),
+        "service_ports": sorted({
+            int(port) for port in config.get("service_ports", [])
+            if 1 <= int(port) <= 65535
+        }),
+    })
+
+    if normalized["subnet"].lower() != "auto":
+        network = ipaddress.ip_network(normalized["subnet"], strict=False)
+        if network.version != 4:
+            raise ValueError("Only IPv4 monitoring scopes are supported.")
+        normalized["subnet"] = str(network)
+
+    CONFIG_PATH.write_text(json.dumps(normalized, indent=2), encoding="utf-8")
+    return normalized
+
+
 def local_ipv4() -> str:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -863,6 +889,16 @@ class TracerouteRequest(BaseModel):
     host: str = Field(min_length=1, max_length=253)
 
 
+class ConfigUpdateRequest(BaseModel):
+    subnet: str = Field(default="auto", min_length=1, max_length=64)
+    monitor_interval_seconds: int = Field(default=30, ge=5, le=3600)
+    warning_latency_ms: float = Field(default=100, ge=1, le=10000)
+    warning_packet_loss_percent: float = Field(default=20, ge=0, le=100)
+    scan_timeout_ms: int = Field(default=550, ge=150, le=5000)
+    max_scan_hosts: int = Field(default=256, ge=1, le=4096)
+    service_ports: list[int] = Field(default_factory=list)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     global MONITOR_THREAD
@@ -959,6 +995,19 @@ def api_update_device(device_ip: str, request: DeviceUpdateRequest):
 @app.get("/api/system")
 def api_system():
     return system_metrics()
+
+
+@app.get("/api/config")
+def api_config():
+    return load_config()
+
+
+@app.put("/api/config")
+def api_update_config(request: ConfigUpdateRequest):
+    try:
+        return save_config(request.model_dump())
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/network")

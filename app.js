@@ -11,6 +11,7 @@
     alerts: ["Operations awareness", "Alerts"],
     tools: ["Troubleshooting toolkit", "Troubleshooting"],
     inventory: ["Asset visibility", "Inventory"],
+    settings: ["Monitoring policy", "Settings"],
     about: ["Project architecture", "About"]
   };
 
@@ -160,6 +161,7 @@
     if (page === "topology") renderTopology();
     if (page === "alerts") renderAlerts();
     if (page === "inventory") renderInventory();
+    if (page === "settings") renderSettings();
   }
 
   qsa("[data-page]").forEach((button) => button.addEventListener("click", () => openPage(button.dataset.page)));
@@ -575,6 +577,89 @@
     `).join("") || '<tr><td class="empty-state" colspan="8">No inventory data.</td></tr>';
   }
 
+
+  function currentConfig() {
+    const overview = state.data?.overview || {};
+    return {
+      subnet: overview.monitored_subnet || "auto",
+      monitor_interval_seconds: overview.scan_interval_seconds || 30,
+      warning_latency_ms: overview.warning_latency_ms || 100,
+      warning_packet_loss_percent: overview.warning_packet_loss_percent ?? 20,
+      scan_timeout_ms: overview.scan_timeout_ms || 550,
+      max_scan_hosts: overview.max_scan_hosts || 256,
+      service_ports: overview.service_ports || [22,53,80,443,445,3389,9100]
+    };
+  }
+
+  async function renderSettings() {
+    let config = currentConfig();
+    if (state.mode === "live") {
+      try {
+        config = await fetchJson(agentApi("/api/config"));
+      } catch (error) {
+        toast("Could not load agent settings", error.message, "error");
+      }
+    }
+
+    $("configSubnet").value = config.subnet || "auto";
+    $("configInterval").value = config.monitor_interval_seconds ?? 30;
+    $("configTimeout").value = config.scan_timeout_ms ?? 550;
+    $("configMaxHosts").value = config.max_scan_hosts ?? 256;
+    $("configLatency").value = config.warning_latency_ms ?? 100;
+    $("configLoss").value = config.warning_packet_loss_percent ?? 20;
+    $("configPorts").value = (config.service_ports || []).join(", ");
+    $("settingsModeNote").textContent = state.mode === "live"
+      ? "Saving updates the local NetOps Agent configuration."
+      : "Demo mode previews settings only; use Live Agent Mode to persist them.";
+  }
+
+  $("saveSettingsButton").addEventListener("click", async () => {
+    const ports = $("configPorts").value.split(",").map((v)=>Number(v.trim())).filter((v)=>Number.isInteger(v) && v>=1 && v<=65535);
+    const body = {
+      subnet: $("configSubnet").value.trim() || "auto",
+      monitor_interval_seconds: Number($("configInterval").value),
+      scan_timeout_ms: Number($("configTimeout").value),
+      max_scan_hosts: Number($("configMaxHosts").value),
+      warning_latency_ms: Number($("configLatency").value),
+      warning_packet_loss_percent: Number($("configLoss").value),
+      service_ports: ports
+    };
+
+    if (state.mode === "demo") {
+      state.data.overview = {
+        ...(state.data.overview || {}),
+        monitored_subnet: body.subnet,
+        scan_interval_seconds: body.monitor_interval_seconds,
+        warning_latency_ms: body.warning_latency_ms,
+        warning_packet_loss_percent: body.warning_packet_loss_percent,
+        scan_timeout_ms: body.scan_timeout_ms,
+        max_scan_hosts: body.max_scan_hosts,
+        service_ports: body.service_ports
+      };
+      toast("Demo settings updated", "These changes last only until the page is reloaded.");
+      renderAll();
+      return;
+    }
+
+    try {
+      const saved = await fetchJson(agentApi("/api/config"), {method:"PUT", body:JSON.stringify(body)});
+      toast("Agent settings saved", "Monitoring policy updated successfully.");
+      await loadData(false);
+      Object.assign(state.data.overview, {
+        monitored_subnet: saved.subnet,
+        scan_interval_seconds: saved.monitor_interval_seconds,
+        warning_latency_ms: saved.warning_latency_ms,
+        warning_packet_loss_percent: saved.warning_packet_loss_percent,
+        scan_timeout_ms: saved.scan_timeout_ms,
+        max_scan_hosts: saved.max_scan_hosts,
+        service_ports: saved.service_ports
+      });
+      renderSettings();
+    } catch (error) {
+      toast("Could not save settings", error.message, "error");
+    }
+  });
+
   function renderAll() {
     if (!state.data) return;
     $("lastRefresh").textContent = state.lastRefresh ? formatClock(state.lastRefresh) : "—";
@@ -584,6 +669,7 @@
     renderTopology();
     renderAlerts();
     renderInventory();
+    if (state.activePage === "settings") renderSettings();
   }
 
   async function scanNetwork() {

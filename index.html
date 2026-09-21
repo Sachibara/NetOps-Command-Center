@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07121f">
+  <meta name="description" content="NetOps Command Center - network monitoring, device inventory, alerts, and troubleshooting dashboard.">
+  <title>NetOps Command Center</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/demo-data.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#overview" aria-label="NetOps Command Center">
+        <div class="brand-mark">
+          <span class="brand-ring ring-a"></span>
+          <span class="brand-ring ring-b"></span>
+          <span class="brand-core">N</span>
+        </div>
+        <div>
+          <strong>NetOps</strong>
+          <span>Command Center</span>
+        </div>
+      </a>
+
+      <div class="agent-card">
+        <div class="status-line">
+          <span class="status-dot" id="agentDot"></span>
+          <div>
+            <strong id="agentStatus">Demo mode</strong>
+            <span id="agentDetail">Portfolio telemetry</span>
+          </div>
+        </div>
+        <button class="link-button" id="connectionButton" type="button">Connection settings</button>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Primary">
+        <button class="nav-item active" data-page="overview"><span>▦</span>Overview</button>
+        <button class="nav-item" data-page="devices"><span>◫</span>Devices</button>
+        <button class="nav-item" data-page="alerts"><span>△</span>Alerts</button>
+        <button class="nav-item" data-page="tools"><span>⌁</span>Troubleshooting</button>
+        <button class="nav-item" data-page="inventory"><span>▤</span>Inventory</button>
+        <button class="nav-item" data-page="about"><span>ⓘ</span>About</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="mini-kpi">
+          <span>Monitoring</span>
+          <strong id="sidebarMonitorCount">0 devices</strong>
+        </div>
+        <p>Built for Network Operations, IT Support, and Infrastructure Engineering.</p>
+      </div>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-button" id="menuButton" aria-label="Toggle navigation">☰</button>
+          <div>
+            <p class="eyebrow" id="pageEyebrow">Network health</p>
+            <h1 id="pageTitle">Overview</h1>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="clock-block">
+            <span>Last refresh</span>
+            <strong id="lastRefresh">—</strong>
+          </div>
+          <button class="ghost-button" id="refreshButton" type="button">Refresh</button>
+          <button class="primary-button" id="scanButton" type="button">Scan network</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="page active" data-page-panel="overview">
+          <div class="hero-grid">
+            <article class="panel health-hero">
+              <div>
+                <p class="eyebrow">Network posture</p>
+                <div class="health-title-row">
+                  <h2 id="healthTitle">Healthy</h2>
+                  <span class="pill positive" id="healthBadge">Operational</span>
+                </div>
+                <p class="hero-copy" id="healthCopy">Monitoring infrastructure health, reachability, latency, services, and alerts.</p>
+                <div class="health-meta">
+                  <span><i></i><strong id="onlineCount">0</strong> online</span>
+                  <span><i></i><strong id="offlineCount">0</strong> offline</span>
+                  <span><i></i><strong id="alertCount">0</strong> active alerts</span>
+                </div>
+              </div>
+
+              <div class="health-orb" id="healthOrb" aria-hidden="true">
+                <span class="orbit orbit-1"></span>
+                <span class="orbit orbit-2"></span>
+                <span class="orbit orbit-3"></span>
+                <span class="orb-center">●</span>
+              </div>
+            </article>
+
+            <article class="panel quick-actions">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Operations</p>
+                  <h3>Quick actions</h3>
+                </div>
+              </div>
+              <button class="action-tile" data-go="devices">
+                <span class="tile-icon">◎</span>
+                <span><strong>Review devices</strong><small>Reachability & inventory</small></span>
+                <b>→</b>
+              </button>
+              <button class="action-tile" data-go="alerts">
+                <span class="tile-icon">△</span>
+                <span><strong>Inspect alerts</strong><small>Availability & latency</small></span>
+                <b>→</b>
+              </button>
+              <button class="action-tile" data-go="tools">
+                <span class="tile-icon">⌁</span>
+                <span><strong>Run diagnostics</strong><small>Ping, DNS, port, subnet</small></span>
+                <b>→</b>
+              </button>
+            </article>
+          </div>
+
+          <div class="stats-grid">
+            <article class="stat-card">
+              <span class="stat-label">Managed devices</span>
+              <strong id="statDevices">0</strong>
+              <small id="statDevicesNote">Network inventory</small>
+            </article>
+            <article class="stat-card">
+              <span class="stat-label">Availability</span>
+              <strong id="statAvailability">0%</strong>
+              <small>Current monitored estate</small>
+            </article>
+            <article class="stat-card">
+              <span class="stat-label">Average latency</span>
+              <strong id="statLatency">0 ms</strong>
+              <small>Across reachable devices</small>
+            </article>
+            <article class="stat-card">
+              <span class="stat-label">Open alerts</span>
+              <strong id="statAlerts">0</strong>
+              <small id="statAlertsNote">Requires attention</small>
+            </article>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="panel telemetry-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Telemetry</p>
+                  <h3>Latency trend</h3>
+                </div>
+                <span class="subtle" id="latencyRangeLabel">Recent samples</span>
+              </div>
+              <canvas id="latencyChart" width="960" height="300" aria-label="Latency trend chart"></canvas>
+              <div class="chart-legend">
+                <span><i class="legend-dot good"></i>Average latency</span>
+                <span><i class="legend-dot warning"></i>Warning threshold</span>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Estate</p>
+                  <h3>Device status</h3>
+                </div>
+              </div>
+              <div class="donut-wrap">
+                <div class="donut" id="statusDonut"><span id="donutPercent">0%</span></div>
+                <div class="donut-legend">
+                  <div><span><i class="legend-dot good"></i>Online</span><strong id="donutOnline">0</strong></div>
+                  <div><span><i class="legend-dot danger"></i>Offline</span><strong id="donutOffline">0</strong></div>
+                  <div><span><i class="legend-dot muted-dot"></i>Unknown</span><strong id="donutUnknown">0</strong></div>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div class="dashboard-grid secondary">
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Attention</p>
+                  <h3>Recent alerts</h3>
+                </div>
+                <button class="link-button" data-go="alerts">View all</button>
+              </div>
+              <div class="alert-stack" id="overviewAlertList"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Infrastructure</p>
+                  <h3>Top latency</h3>
+                </div>
+                <button class="link-button" data-go="devices">View devices</button>
+              </div>
+              <div class="rank-list" id="topLatencyList"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="page" data-page-panel="devices">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Discovery & monitoring</p>
+              <h2>Network devices</h2>
+              <p>Track reachability, latency, identity, and exposed services across the monitored network.</p>
+            </div>
+            <div class="section-actions">
+              <button class="ghost-button" id="deviceRefreshButton">Refresh</button>
+              <button class="primary-button" id="deviceScanButton">Discover devices</button>
+            </div>
+          </div>
+
+          <article class="panel">
+            <div class="table-toolbar">
+              <div class="search-box">
+                <span>⌕</span>
+                <input id="deviceSearch" type="search" placeholder="Search IP, hostname, MAC, role, or vendor">
+              </div>
+              <select id="deviceStatusFilter" aria-label="Filter by status">
+                <option value="all">All statuses</option>
+                <option value="online">Online</option>
+                <option value="offline">Offline</option>
+                <option value="unknown">Unknown</option>
+              </select>
+              <select id="deviceRoleFilter" aria-label="Filter by role">
+                <option value="all">All roles</option>
+              </select>
+            </div>
+
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Device</th>
+                    <th>IP address</th>
+                    <th>MAC</th>
+                    <th>Role</th>
+                    <th>Latency</th>
+                    <th>Services</th>
+                    <th>Last seen</th>
+                  </tr>
+                </thead>
+                <tbody id="deviceTableBody"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="page" data-page-panel="alerts">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Operations awareness</p>
+              <h2>Alerts</h2>
+              <p>Availability, latency, and service events detected by the monitoring agent.</p>
+            </div>
+            <button class="ghost-button" id="alertsRefreshButton">Refresh alerts</button>
+          </div>
+
+          <div class="alert-summary-grid">
+            <article class="mini-stat critical"><span>Critical</span><strong id="criticalAlertCount">0</strong></article>
+            <article class="mini-stat warning"><span>Warning</span><strong id="warningAlertCount">0</strong></article>
+            <article class="mini-stat info"><span>Informational</span><strong id="infoAlertCount">0</strong></article>
+            <article class="mini-stat resolved"><span>Resolved</span><strong id="resolvedAlertCount">0</strong></article>
+          </div>
+
+          <article class="panel">
+            <div class="table-toolbar">
+              <div class="search-box">
+                <span>⌕</span>
+                <input id="alertSearch" type="search" placeholder="Search alert, device, or IP">
+              </div>
+              <select id="alertSeverityFilter">
+                <option value="all">All severities</option>
+                <option value="critical">Critical</option>
+                <option value="warning">Warning</option>
+                <option value="info">Info</option>
+              </select>
+              <select id="alertStateFilter">
+                <option value="active">Active alerts</option>
+                <option value="all">All alerts</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
+            <div class="alert-feed" id="alertFeed"></div>
+          </article>
+        </section>
+
+        <section class="page" data-page-panel="tools">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Troubleshooting toolkit</p>
+              <h2>Diagnostics</h2>
+              <p>Run common infrastructure checks from one operational console.</p>
+            </div>
+          </div>
+
+          <div class="tool-grid">
+            <article class="panel tool-card">
+              <div class="tool-icon">↔</div>
+              <h3>Ping test</h3>
+              <p>Measure host reachability, round-trip latency, and packet loss.</p>
+              <form id="pingForm" class="tool-form">
+                <input id="pingHost" required placeholder="8.8.8.8 or host.local">
+                <button class="primary-button" type="submit">Run ping</button>
+              </form>
+              <pre class="tool-output" id="pingOutput">Ready.</pre>
+            </article>
+
+            <article class="panel tool-card">
+              <div class="tool-icon">DNS</div>
+              <h3>DNS lookup</h3>
+              <p>Resolve hostnames and inspect returned IPv4/IPv6 addresses.</p>
+              <form id="dnsForm" class="tool-form">
+                <input id="dnsHost" required placeholder="example.com">
+                <button class="primary-button" type="submit">Resolve</button>
+              </form>
+              <pre class="tool-output" id="dnsOutput">Ready.</pre>
+            </article>
+
+            <article class="panel tool-card">
+              <div class="tool-icon">:</div>
+              <h3>TCP port test</h3>
+              <p>Check whether a specific TCP service is reachable from the agent.</p>
+              <form id="portForm" class="tool-form two-input">
+                <input id="portHost" required placeholder="192.168.1.1">
+                <input id="portNumber" required type="number" min="1" max="65535" value="443">
+                <button class="primary-button" type="submit">Test port</button>
+              </form>
+              <pre class="tool-output" id="portOutput">Ready.</pre>
+            </article>
+
+            <article class="panel tool-card">
+              <div class="tool-icon">/</div>
+              <h3>Subnet calculator</h3>
+              <p>Calculate network, broadcast, usable range, and host capacity.</p>
+              <form id="subnetForm" class="tool-form">
+                <input id="subnetInput" required value="192.168.1.0/24" placeholder="192.168.1.0/24">
+                <button class="primary-button" type="submit">Calculate</button>
+              </form>
+              <pre class="tool-output" id="subnetOutput">Ready.</pre>
+            </article>
+          </div>
+        </section>
+
+        <section class="page" data-page-panel="inventory">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Asset visibility</p>
+              <h2>Infrastructure inventory</h2>
+              <p>Operational inventory grouped by device role and network function.</p>
+            </div>
+            <button class="ghost-button" id="exportInventoryButton">Export CSV</button>
+          </div>
+
+          <div class="inventory-summary" id="inventorySummary"></div>
+
+          <article class="panel">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Hostname</th>
+                    <th>IP</th>
+                    <th>MAC</th>
+                    <th>Vendor</th>
+                    <th>Role</th>
+                    <th>OS / Platform</th>
+                    <th>Services</th>
+                    <th>Monitoring</th>
+                  </tr>
+                </thead>
+                <tbody id="inventoryTableBody"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="page" data-page-panel="about">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Project architecture</p>
+              <h2>About NetOps Command Center</h2>
+              <p>A practical network operations portfolio project built around visibility, monitoring, troubleshooting, and infrastructure support.</p>
+            </div>
+          </div>
+
+          <div class="about-grid">
+            <article class="panel architecture-card">
+              <p class="eyebrow">Deployment model</p>
+              <h3>Cloud demo + local agent</h3>
+              <div class="architecture-flow">
+                <div><strong>Browser dashboard</strong><span>Public portfolio deployment</span></div>
+                <b>↔</b>
+                <div><strong>NetOps Agent</strong><span>Runs inside the monitored LAN</span></div>
+                <b>↔</b>
+                <div><strong>Network estate</strong><span>Endpoints & infrastructure</span></div>
+              </div>
+              <p class="subtle">The public demo uses representative telemetry. Real scanning and diagnostics are performed only by the local agent on the network where it is installed.</p>
+            </article>
+
+            <article class="panel">
+              <p class="eyebrow">Skills demonstrated</p>
+              <h3>Infrastructure + development</h3>
+              <div class="skill-tags">
+                <span>Network Monitoring</span><span>ICMP</span><span>TCP/IP</span><span>ARP</span>
+                <span>DNS</span><span>Subnetting</span><span>Python</span><span>FastAPI</span>
+                <span>SQLite</span><span>JavaScript</span><span>REST APIs</span><span>IT Operations</span>
+              </div>
+            </article>
+
+            <article class="panel">
+              <p class="eyebrow">Operational focus</p>
+              <h3>Designed for real IT workflows</h3>
+              <ul class="feature-list">
+                <li>Identify offline and high-latency devices quickly.</li>
+                <li>Maintain a lightweight infrastructure inventory.</li>
+                <li>Run first-line troubleshooting from one console.</li>
+                <li>Keep historical samples and alert records locally.</li>
+                <li>Separate portfolio demonstration from private network access.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <dialog class="connection-dialog" id="connectionDialog">
+    <form method="dialog" class="dialog-card" id="connectionForm">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">Data source</p>
+          <h2>Connection settings</h2>
+        </div>
+        <button class="icon-button" value="cancel" aria-label="Close">×</button>
+      </div>
+
+      <label class="radio-card">
+        <input type="radio" name="mode" value="demo" checked>
+        <span>
+          <strong>Portfolio demo mode</strong>
+          <small>Use built-in representative network telemetry.</small>
+        </span>
+      </label>
+
+      <label class="radio-card">
+        <input type="radio" name="mode" value="live">
+        <span>
+          <strong>Live agent mode</strong>
+          <small>Connect to a locally running NetOps Agent.</small>
+        </span>
+      </label>
+
+      <label class="field-stack">
+        <span>Agent URL</span>
+        <input id="agentUrlInput" type="url" value="http://127.0.0.1:8787" placeholder="http://127.0.0.1:8787">
+      </label>
+
+      <div class="dialog-note">
+        For live monitoring, run <code>python agent/netops_agent.py</code> inside the network you are authorized to monitor.
+      </div>
+
+      <div class="dialog-actions">
+        <button class="ghost-button" value="cancel">Cancel</button>
+        <button class="primary-button" id="saveConnectionButton" value="default">Save connection</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+</body>
+</html>

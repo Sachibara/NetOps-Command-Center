@@ -322,3 +322,13 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(102,
   .system-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
   .device-detail-grid,.device-edit-grid{grid-template-columns:1fr}
 }
+
+
+.settings-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.config-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.config-wide{grid-column:1/-1}
+.settings-save-panel{margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.settings-save-panel strong{display:block;font-size:.84rem}
+.settings-save-panel p{margin:3px 0 0}
+@media(max-width:900px){.settings-layout{grid-template-columns:1fr}}
+@media(max-width:620px){.config-grid{grid-template-columns:1fr}.config-wide{grid-column:auto}.settings-save-panel{align-items:stretch;flex-direction:column}.settings-save-panel button{width:100%}}

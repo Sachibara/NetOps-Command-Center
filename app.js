@@ -7,6 +7,7 @@
   const pageMeta = {
     overview: ["Network health", "Overview"],
     devices: ["Discovery & monitoring", "Devices"],
+    topology: ["Network visualization", "Topology"],
     alerts: ["Operations awareness", "Alerts"],
     tools: ["Troubleshooting toolkit", "Troubleshooting"],
     inventory: ["Asset visibility", "Inventory"],
@@ -57,6 +58,29 @@
     if (seconds < 3600) return Math.round(seconds / 60) + "m ago";
     if (seconds < 86400) return Math.round(seconds / 3600) + "h ago";
     return Math.round(seconds / 86400) + "d ago";
+  }
+
+
+  function formatBytes(value, perSecond = false) {
+    let n = Number(value) || 0;
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    let i = 0;
+    while (n >= 1024 && i < units.length - 1) {
+      n /= 1024;
+      i++;
+    }
+    const digits = n >= 100 ? 0 : n >= 10 ? 1 : 2;
+    return n.toFixed(digits) + " " + units[i] + (perSecond ? "/s" : "");
+  }
+
+  function formatDuration(seconds) {
+    let s = Math.max(0, Number(seconds) || 0);
+    const days = Math.floor(s / 86400); s %= 86400;
+    const hours = Math.floor(s / 3600); s %= 3600;
+    const minutes = Math.floor(s / 60);
+    if (days) return days + "d " + hours + "h";
+    if (hours) return hours + "h " + minutes + "m";
+    return minutes + "m";
   }
 
   function formatClock(date = new Date()) {
@@ -133,6 +157,7 @@
     $("pageTitle").textContent = pageMeta[page][1];
     $("sidebar").classList.remove("open");
     if (page === "devices") renderDevices();
+    if (page === "topology") renderTopology();
     if (page === "alerts") renderAlerts();
     if (page === "inventory") renderInventory();
   }
@@ -221,6 +246,24 @@
     `).join("") || '<div class="empty-state">No latency data.</div>';
 
     drawLatencyChart();
+  }
+
+
+  function renderSystemHealth() {
+    const system = state.data?.system || {};
+    $("systemHostLabel").textContent = system.hostname || "Monitoring node";
+    $("systemCpu").textContent = Number.isFinite(Number(system.cpu_percent)) ? Number(system.cpu_percent).toFixed(1) + "%" : "—";
+    $("systemMemory").textContent = Number.isFinite(Number(system.memory_percent)) ? Number(system.memory_percent).toFixed(1) + "%" : "—";
+    $("systemDisk").textContent = Number.isFinite(Number(system.disk_percent)) ? Number(system.disk_percent).toFixed(1) + "%" : "—";
+    $("systemCpuMeter").value = Number(system.cpu_percent) || 0;
+    $("systemMemoryMeter").value = Number(system.memory_percent) || 0;
+    $("systemDiskMeter").value = Number(system.disk_percent) || 0;
+    $("systemDownload").textContent = system.download_bps != null ? formatBytes(system.download_bps, true) : "—";
+    $("systemUpload").textContent = system.upload_bps != null ? formatBytes(system.upload_bps, true) : "—";
+    $("systemDownloadTotal").textContent = "Total " + (system.bytes_recv != null ? formatBytes(system.bytes_recv) : "—");
+    $("systemUploadTotal").textContent = "Total " + (system.bytes_sent != null ? formatBytes(system.bytes_sent) : "—");
+    $("systemUptime").textContent = system.uptime_seconds != null ? formatDuration(system.uptime_seconds) : "—";
+    $("systemPlatform").textContent = system.platform || "—";
   }
 
   function drawLatencyChart() {
@@ -312,7 +355,7 @@
       return;
     }
     tbody.innerHTML = devices.map((d) => `
-      <tr>
+      <tr class="device-row" data-ip="${escapeHtml(d.ip)}">
         <td><span class="status-badge ${escapeHtml(d.status || "unknown")}">${escapeHtml(d.status || "unknown")}</span></td>
         <td class="device-cell"><strong>${escapeHtml(d.hostname || "Unidentified")}</strong><span>${escapeHtml(d.vendor || "Unknown vendor")}</span></td>
         <td><code>${escapeHtml(d.ip)}</code></td>
@@ -323,6 +366,152 @@
         <td>${escapeHtml(formatTime(d.last_seen))}</td>
       </tr>
     `).join("");
+    qsa("tr.device-row", tbody).forEach((row) => row.addEventListener("click", () => openDeviceDetail(row.dataset.ip)));
+  }
+
+
+  function deviceCategory(device) {
+    const role = String(device.role || "").toLowerCase();
+    if (role.includes("router") || device.ip?.endsWith(".1")) return "gateway";
+    if (role.includes("switch")) return "switch";
+    if (role.includes("server")) return "server";
+    if (role.includes("access") || role.includes("wireless")) return "wireless";
+    return "endpoint";
+  }
+
+  function renderTopology() {
+    if (!state.data) return;
+    const devices = state.data.devices || [];
+    const canvas = $("topologyCanvas");
+    $("topologySubnet").textContent = state.data.overview?.monitored_subnet || "Monitored network";
+    if (!devices.length) {
+      canvas.innerHTML = '<div class="empty-state">No discovered devices to map.</div>';
+      $("topologySummary").innerHTML = "";
+      return;
+    }
+
+    const width = Math.max(760, canvas.clientWidth || 760);
+    const height = 540;
+    const gateway = devices.find((d) => deviceCategory(d) === "gateway") || devices[0];
+    const others = devices.filter((d) => d !== gateway);
+    const centerX = width / 2 - 75;
+    const centerY = height / 2 - 37;
+    const positions = new Map();
+    positions.set(gateway.ip, {x:centerX,y:centerY});
+
+    others.forEach((device, index) => {
+      const angle = (Math.PI * 2 * index / Math.max(1, others.length)) - Math.PI / 2;
+      const radiusX = Math.min(width * .36, 300);
+      const radiusY = 190;
+      positions.set(device.ip, {
+        x: Math.max(18, Math.min(width - 168, width / 2 - 75 + Math.cos(angle) * radiusX)),
+        y: Math.max(18, Math.min(height - 92, height / 2 - 37 + Math.sin(angle) * radiusY))
+      });
+    });
+
+    const links = others.map((device) => {
+      const a = positions.get(gateway.ip), b = positions.get(device.ip);
+      const x1 = a.x + 75, y1 = a.y + 37, x2 = b.x + 75, y2 = b.y + 37;
+      const dx = x2 - x1, dy = y2 - y1;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      return '<span class="topology-link" style="left:'+x1+'px;top:'+y1+'px;width:'+length+'px;transform:rotate('+angle+'deg)"></span>';
+    }).join("");
+
+    const nodes = devices.map((device) => {
+      const p = positions.get(device.ip);
+      const category = deviceCategory(device);
+      return '<button type="button" class="topology-node '+category+' '+escapeHtml(device.status || "unknown")+'" data-device-ip="'+escapeHtml(device.ip)+'" style="left:'+p.x+'px;top:'+p.y+'px">'
+        +'<strong>'+escapeHtml(device.hostname || device.ip)+'</strong>'
+        +'<span>'+escapeHtml(device.ip)+' · '+escapeHtml(device.role || "Device")+'</span>'
+        +'<span class="status-badge node-status '+escapeHtml(device.status || "unknown")+'">'+escapeHtml(device.status || "unknown")+'</span>'
+        +'</button>';
+    }).join("");
+
+    canvas.innerHTML = '<div class="topology-network" style="width:'+width+'px;height:'+height+'px">'+links+nodes+'</div>';
+    qsa("[data-device-ip]", canvas).forEach((node) => node.addEventListener("click", () => openDeviceDetail(node.dataset.deviceIp)));
+
+    const roles = {};
+    devices.forEach((d) => { roles[d.role || "Other"] = (roles[d.role || "Other"] || 0) + 1; });
+    const topRoles = Object.entries(roles).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const online = devices.filter((d)=>d.status==="online").length;
+    $("topologySummary").innerHTML =
+      '<div class="topology-insight"><span>Gateway / root</span><strong>'+escapeHtml(gateway.hostname || gateway.ip)+'</strong></div>'
+      +'<div class="topology-insight"><span>Discovered nodes</span><strong>'+devices.length+'</strong></div>'
+      +'<div class="topology-insight"><span>Reachable now</span><strong>'+online+' / '+devices.length+'</strong></div>'
+      +topRoles.map(([role,count])=>'<div class="topology-insight"><span>'+escapeHtml(role)+'</span><strong>'+count+'</strong></div>').join("");
+  }
+
+  function demoDeviceDetail(ip) {
+    const device = (state.data?.devices || []).find((d) => d.ip === ip);
+    if (!device) return null;
+    const samples = Array.from({length: 32}, (_, index) => {
+      const online = device.status !== "offline" || index < 24;
+      const base = Number(device.latency_ms) || 12;
+      return {
+        timestamp: new Date(Date.now() - (31-index)*15*60000).toISOString(),
+        status: online ? "online" : "offline",
+        latency_ms: online ? Math.max(1, base + Math.sin(index/3)*3 + (index%4)) : null,
+        packet_loss: online ? (device.packet_loss || 0) : 100
+      };
+    });
+    return {device, samples};
+  }
+
+  async function openDeviceDetail(ip) {
+    let detail;
+    if (state.mode === "demo") {
+      detail = demoDeviceDetail(ip);
+    } else {
+      try {
+        detail = await fetchJson(agentApi("/api/devices/" + encodeURIComponent(ip)));
+      } catch (error) {
+        toast("Could not load device details", error.message, "error");
+        return;
+      }
+    }
+    if (!detail) return;
+    const d = detail.device;
+    $("deviceDialogTitle").textContent = d.hostname || d.ip;
+    $("detailStatus").textContent = d.status || "unknown";
+    $("detailIp").textContent = d.ip;
+    $("detailLatency").textContent = Number.isFinite(Number(d.latency_ms)) ? Number(d.latency_ms).toFixed(1) + " ms" : "—";
+    $("detailAvailability").textContent = d.availability_24h != null ? Number(d.availability_24h).toFixed(2) + "%" : "Insufficient history";
+    $("detailFirstSeen").textContent = d.first_seen ? new Date(d.first_seen).toLocaleString() : "—";
+    $("detailLastSeen").textContent = d.last_seen ? new Date(d.last_seen).toLocaleString() : "—";
+    $("detailHostname").value = d.hostname || "";
+    $("detailVendor").value = d.vendor || "";
+    $("detailRole").value = d.role || "";
+    $("detailPlatform").value = d.platform || "";
+    $("detailServices").textContent = "Services: " + ((d.services || []).map((p)=>serviceNames[p] ? serviceNames[p]+" ("+p+")" : p).join(", ") || "None detected");
+    $("deviceDialog").dataset.deviceIp = d.ip;
+    $("deviceDialog").showModal();
+    requestAnimationFrame(() => drawDeviceHistory(detail.samples || []));
+  }
+
+  function drawDeviceHistory(samples) {
+    const canvas = $("deviceHistoryChart");
+    const rect = canvas.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    const width = Math.max(420, rect.width || 700), height = 220;
+    canvas.width = width * ratio; canvas.height = height * ratio;
+    const ctx = canvas.getContext("2d"); ctx.scale(ratio, ratio);
+    const css = getComputedStyle(document.documentElement);
+    const border = css.getPropertyValue("--border").trim();
+    const cyan = css.getPropertyValue("--cyan").trim();
+    ctx.clearRect(0,0,width,height); ctx.strokeStyle=border; ctx.lineWidth=1;
+    for(let i=1;i<5;i++){const y=height*i/5;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(width,y);ctx.stroke();}
+    const values=samples.map(s=>Number(s.latency_ms)).filter(Number.isFinite);
+    const max=Math.max(10,...values)*1.15;
+    ctx.strokeStyle=cyan;ctx.lineWidth=2.2;ctx.beginPath();
+    let started=false;
+    samples.forEach((s,i)=>{
+      const v=Number(s.latency_ms); if(!Number.isFinite(v)){started=false;return;}
+      const x=samples.length===1?width/2:i/(samples.length-1)*width;
+      const y=height-(v/max)*(height-24)-12;
+      if(!started){ctx.moveTo(x,y);started=true;}else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
   }
 
   function renderAlerts() {
@@ -390,7 +579,9 @@
     if (!state.data) return;
     $("lastRefresh").textContent = state.lastRefresh ? formatClock(state.lastRefresh) : "—";
     renderOverview();
+    renderSystemHealth();
     renderDevices();
+    renderTopology();
     renderAlerts();
     renderInventory();
   }
@@ -464,6 +655,51 @@
     } catch (error) { $("portOutput").textContent = "Error: " + error.message; }
   });
 
+
+  $("tracerouteForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const host = $("tracerouteHost").value.trim();
+    $("tracerouteOutput").textContent = "Tracing route…";
+    if (state.mode === "demo") {
+      await new Promise((r) => setTimeout(r, 350));
+      $("tracerouteOutput").textContent =
+        "Tracing route to " + host + "\n"
+        + "1   192.168.10.1      2 ms\n"
+        + "2   10.20.0.1         8 ms\n"
+        + "3   203.0.113.1      14 ms\n"
+        + "4   " + host + "      21 ms\n\n"
+        + "Demo mode: run the local agent for a real routed path.";
+      return;
+    }
+    try {
+      const r = await runLiveTool("/api/tools/traceroute", {host});
+      $("tracerouteOutput").textContent = r.output || JSON.stringify(r, null, 2);
+    } catch (error) {
+      $("tracerouteOutput").textContent = "Error: " + error.message;
+    }
+  });
+
+  $("routeTableButton").addEventListener("click", async () => {
+    $("routeTableOutput").textContent = "Loading interfaces and routes…";
+    if (state.mode === "demo") {
+      $("routeTableOutput").textContent =
+        "Interfaces\nEthernet  — 192.168.10.15/24 — 1 Gbps — UP\n"
+        + "Wi-Fi     — disconnected\n\n"
+        + "Routes\n0.0.0.0/0 via 192.168.10.1\n192.168.10.0/24 on-link";
+      return;
+    }
+    try {
+      const r = await fetchJson(agentApi("/api/network"));
+      const interfaces = (r.interfaces || []).map((i) => {
+        const addresses = (i.addresses || []).map((a) => a.address).filter(Boolean).join(", ");
+        return i.name + " — " + (i.is_up ? "UP" : "DOWN") + (i.speed_mbps ? " — " + i.speed_mbps + " Mbps" : "") + "\n  " + addresses;
+      }).join("\n");
+      $("routeTableOutput").textContent = "Interfaces\n" + interfaces + "\n\nRoutes\n" + (r.routes || "No route data.");
+    } catch (error) {
+      $("routeTableOutput").textContent = "Error: " + error.message;
+    }
+  });
+
   function ipToInt(ip) {
     const parts = ip.split(".").map(Number);
     if (parts.length !== 4 || parts.some((x) => !Number.isInteger(x) || x < 0 || x > 255)) throw new Error("Invalid IPv4 address");
@@ -533,12 +769,47 @@
   $("refreshButton").addEventListener("click", () => loadData(true));
   $("deviceRefreshButton").addEventListener("click", () => loadData(true));
   $("alertsRefreshButton").addEventListener("click", () => loadData(true));
+  $("topologyRefreshButton").addEventListener("click", () => loadData(true));
   $("scanButton").addEventListener("click", scanNetwork);
   $("deviceScanButton").addEventListener("click", scanNetwork);
   $("exportInventoryButton").addEventListener("click", exportInventory);
 
   ["deviceSearch","deviceStatusFilter","deviceRoleFilter"].forEach((id) => $(id).addEventListener(id === "deviceSearch" ? "input" : "change", renderDevices));
   ["alertSearch","alertSeverityFilter","alertStateFilter"].forEach((id) => $(id).addEventListener(id === "alertSearch" ? "input" : "change", renderAlerts));
+
+
+  $("saveDeviceButton").addEventListener("click", async (event) => {
+    event.preventDefault();
+    const ip = $("deviceDialog").dataset.deviceIp;
+    if (!ip) return;
+    const body = {
+      hostname: $("detailHostname").value.trim(),
+      vendor: $("detailVendor").value.trim(),
+      role: $("detailRole").value.trim(),
+      platform: $("detailPlatform").value.trim()
+    };
+
+    if (state.mode === "demo") {
+      const device = (state.data.devices || []).find((d) => d.ip === ip);
+      if (device) Object.assign(device, body);
+      $("deviceDialog").close();
+      renderAll();
+      toast("Demo metadata updated", "Changes are kept only for the current demo session.");
+      return;
+    }
+
+    try {
+      await fetchJson(agentApi("/api/devices/" + encodeURIComponent(ip)), {
+        method: "PUT",
+        body: JSON.stringify(body)
+      });
+      $("deviceDialog").close();
+      await loadData(false);
+      toast("Device metadata saved", ip);
+    } catch (error) {
+      toast("Could not save device", error.message, "error");
+    }
+  });
 
   const dialog = $("connectionDialog");
   $("connectionButton").addEventListener("click", () => {
@@ -563,7 +834,7 @@
     loadData(true);
   });
 
-  window.addEventListener("resize", drawLatencyChart);
+  window.addEventListener("resize", () => { drawLatencyChart(); if (state.activePage === "topology") renderTopology(); });
 
   setInterval(() => {
     if (state.mode === "live" && document.visibilityState === "visible") loadData(false);

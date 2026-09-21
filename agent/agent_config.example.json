@@ -1,0 +1,9 @@
+{
+  "subnet": "auto",
+  "monitor_interval_seconds": 30,
+  "warning_latency_ms": 100,
+  "warning_packet_loss_percent": 20,
+  "scan_timeout_ms": 550,
+  "max_scan_hosts": 256,
+  "service_ports": [22, 53, 80, 443, 445, 3389, 9100]
+}

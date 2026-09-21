@@ -332,3 +332,350 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(102,
 .settings-save-panel p{margin:3px 0 0}
 @media(max-width:900px){.settings-layout{grid-template-columns:1fr}}
 @media(max-width:620px){.config-grid{grid-template-columns:1fr}.config-wide{grid-column:auto}.settings-save-panel{align-items:stretch;flex-direction:column}.settings-save-panel button{width:100%}}
+
+
+/* =========================================================
+   NOC CONTROL ROOM THEME
+   Deliberately distinct from the main portfolio UI.
+   ========================================================= */
+:root{
+  --bg:#04070a;
+  --bg-soft:#070c10;
+  --panel:#081016;
+  --panel-2:#0b151c;
+  --panel-3:#0e1b23;
+  --text:#dfffe9;
+  --muted:#82998b;
+  --subtle:#53665a;
+  --border:rgba(124,255,107,.14);
+  --border-strong:rgba(124,255,107,.38);
+  --cyan:#7cff6b;
+  --cyan-deep:#39d353;
+  --green:#33f0ad;
+  --amber:#ffb84a;
+  --red:#ff5f6d;
+  --purple:#b69cff;
+  --shadow:none;
+  --radius:5px;
+  --sidebar:228px;
+}
+
+body{
+  color:var(--text);
+  background:
+    linear-gradient(rgba(124,255,107,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(124,255,107,.025) 1px,transparent 1px),
+    var(--bg);
+  background-size:28px 28px;
+  font-family:ui-monospace,"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  letter-spacing:-.01em;
+}
+
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  background:linear-gradient(180deg,rgba(124,255,107,.025),transparent 22%,transparent 80%,rgba(51,240,173,.02));
+}
+
+.sidebar{
+  background:#05090c;
+  border-right:1px solid rgba(124,255,107,.26);
+  backdrop-filter:none;
+  padding:15px 10px 12px;
+}
+
+.brand{
+  padding:5px 7px 20px;
+  border-bottom:1px solid rgba(124,255,107,.12);
+  margin-bottom:12px;
+}
+.brand-mark{width:40px;height:40px}
+.brand-ring{
+  border-color:rgba(124,255,107,.35);
+  border-radius:2px;
+  transform:rotate(45deg);
+}
+.ring-a{width:34px;height:34px}
+.ring-b{width:23px;height:23px}
+.brand-core{
+  width:22px;height:22px;border-radius:1px;
+  background:var(--cyan);
+  color:#041008;
+  box-shadow:0 0 18px rgba(124,255,107,.2);
+}
+.brand strong{
+  color:#effff2;
+  text-transform:uppercase;
+  font-size:.86rem;
+  letter-spacing:.05em;
+}
+.brand span{font-size:.58rem;letter-spacing:.08em;text-transform:uppercase}
+
+.agent-card{
+  border-radius:2px;
+  border-color:rgba(124,255,107,.2);
+  background:#070d11;
+  box-shadow:inset 3px 0 0 rgba(124,255,107,.5);
+  margin:0 2px 15px;
+}
+.status-line strong{text-transform:uppercase;letter-spacing:.06em}
+.status-dot{border-radius:1px}
+.link-button{
+  color:var(--cyan);
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+
+.sidebar-nav{gap:2px}
+.nav-item{
+  border-radius:2px;
+  padding:9px 8px;
+  font-size:.7rem;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+}
+.nav-item span{
+  border-radius:1px;
+  background:#0a1218;
+  color:var(--cyan);
+}
+.nav-item:hover,.nav-item.active{
+  background:#0a141a;
+  border-color:rgba(124,255,107,.28);
+  color:var(--cyan);
+  box-shadow:inset 2px 0 0 var(--cyan);
+}
+.sidebar-footer{
+  border-top:1px solid rgba(124,255,107,.12);
+  padding-top:12px;
+}
+
+.topbar{
+  min-height:68px;
+  background:rgba(4,7,10,.96);
+  border-bottom:1px solid rgba(124,255,107,.2);
+  backdrop-filter:none;
+}
+.topbar h1{
+  font-size:1.13rem;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.eyebrow{
+  color:var(--cyan);
+  font-size:.59rem;
+  letter-spacing:.18em;
+}
+.clock-block strong{color:var(--cyan)}
+
+main{padding:24px clamp(16px,3vw,30px)}
+
+.panel,.stat-card,.mini-stat{
+  border-color:rgba(124,255,107,.15);
+  background:#080f14;
+  box-shadow:none;
+}
+.panel{
+  border-radius:3px;
+  padding:18px;
+  position:relative;
+}
+.panel::before{
+  content:"";
+  position:absolute;
+  top:-1px;left:-1px;
+  width:20px;height:20px;
+  border-top:1px solid rgba(124,255,107,.55);
+  border-left:1px solid rgba(124,255,107,.55);
+  pointer-events:none;
+}
+.panel-heading{
+  padding-bottom:10px;
+  border-bottom:1px solid rgba(124,255,107,.09);
+}
+.panel-heading h3,.tool-card h3,.architecture-card h3{
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  font-size:.88rem;
+}
+
+.primary-button,.ghost-button,.danger-button{
+  border-radius:2px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  font-size:.66rem;
+}
+.primary-button{
+  background:var(--cyan);
+  color:#041008;
+}
+.ghost-button{
+  background:#0a1319;
+  border-color:rgba(124,255,107,.22);
+}
+.danger-button{background:#160b0d}
+
+.health-hero{
+  min-height:260px;
+  border-radius:3px;
+  background:
+    repeating-linear-gradient(0deg,rgba(124,255,107,.018) 0 1px,transparent 1px 8px),
+    linear-gradient(90deg,#081016 0%,#071015 62%,#07130d 100%);
+}
+.health-title-row h2{
+  font-size:clamp(2.2rem,4.2vw,3.7rem);
+  letter-spacing:-.035em;
+  text-transform:uppercase;
+}
+.hero-copy{font-size:.77rem;max-width:620px}
+.pill{
+  border-radius:2px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+.health-orb{height:190px}
+.orbit{border-radius:2px;transform:rotate(45deg)}
+.orbit-1{width:74px;height:74px}
+.orbit-2{width:126px;height:126px}
+.orbit-3{width:176px;height:176px}
+.orb-center{
+  width:54px;height:54px;border-radius:2px;
+  background:var(--cyan);
+  box-shadow:0 0 28px rgba(124,255,107,.18);
+}
+.health-orb.active .orbit-1,.health-orb.active .orbit-2,.health-orb.active .orbit-3{animation:none}
+
+.action-tile{
+  border-radius:2px;
+  background:#071016;
+  border-color:rgba(124,255,107,.12);
+}
+.action-tile:hover{background:#0a151a;border-color:rgba(124,255,107,.34)}
+.tile-icon{
+  border-radius:1px;
+  background:#0a1811;
+  color:var(--cyan);
+}
+
+.stats-grid{gap:8px}
+.stat-card{
+  border-radius:2px;
+  padding:14px;
+  border-top:2px solid rgba(124,255,107,.55);
+}
+.stat-label,.stat-card small{text-transform:uppercase;letter-spacing:.06em}
+.stat-card strong{
+  font-size:1.65rem;
+  color:var(--cyan);
+  letter-spacing:-.02em;
+}
+
+#latencyChart{
+  border-radius:1px;
+  border:1px solid rgba(124,255,107,.08);
+  background:#030609;
+}
+
+.donut::after{background:#080f14}
+.alert-row,.alert-card,.rank-item,.inventory-chip{
+  border-radius:2px;
+}
+.alert-row,.alert-card{background:#070d11}
+.alert-icon{border-radius:1px}
+
+.search-box,input,select{
+  border-radius:2px;
+  background:#04090c;
+  border-color:rgba(124,255,107,.16);
+}
+input:focus,select:focus{
+  border-color:var(--cyan);
+  box-shadow:0 0 0 1px rgba(124,255,107,.22);
+}
+
+.table-wrap{
+  border-radius:1px;
+  border-color:rgba(124,255,107,.14);
+}
+.data-table th{
+  background:#071016;
+  color:#9eb7a4;
+  letter-spacing:.1em;
+}
+.data-table td{font-size:.68rem}
+.data-table tbody tr:hover{background:rgba(124,255,107,.035)}
+.status-badge{
+  border-radius:1px;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+.status-badge::before{border-radius:1px}
+.service-tags span,.skill-tags span{
+  border-radius:1px;
+  background:#0a1710;
+  border-color:rgba(124,255,107,.18);
+  color:#c8ffd2;
+}
+
+.tool-icon{
+  border-radius:1px;
+  background:#0a1710;
+  border:1px solid rgba(124,255,107,.14);
+}
+.tool-output{
+  border-radius:1px;
+  background:#010302;
+  color:#8fff7f;
+  border-color:rgba(124,255,107,.18);
+  text-shadow:0 0 8px rgba(124,255,107,.12);
+}
+
+.topology-canvas{
+  border-radius:1px;
+  background:
+    linear-gradient(rgba(124,255,107,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(124,255,107,.025) 1px,transparent 1px),
+    #03070a;
+  background-size:24px 24px;
+}
+.topology-node{
+  border-radius:1px;
+  background:#071016;
+  box-shadow:none;
+}
+.topology-node.gateway{
+  border-color:var(--cyan);
+  box-shadow:0 0 16px rgba(124,255,107,.08);
+}
+.topology-link{background:rgba(124,255,107,.28)}
+
+.system-metrics>div,.device-detail-grid>div,.architecture-flow div,.topology-insight{
+  border-radius:1px;
+  background:#070d11;
+}
+.system-metrics strong{color:var(--cyan)}
+
+.dialog-card{
+  border-radius:2px;
+  background:#070d11;
+  box-shadow:0 0 0 1px rgba(124,255,107,.08);
+}
+.connection-dialog::backdrop{background:rgba(0,0,0,.86);backdrop-filter:none}
+.icon-button{border-radius:1px;background:#0b151c}
+.radio-card,.dialog-note{border-radius:2px}
+
+.settings-layout .panel{background:#070d11}
+.settings-save-panel{border-left:3px solid var(--cyan)}
+
+.toast{
+  border-radius:2px;
+  background:#081016;
+  border-color:rgba(124,255,107,.22);
+}
+
+@media(max-width:860px){
+  .sidebar{background:#05090c}
+}

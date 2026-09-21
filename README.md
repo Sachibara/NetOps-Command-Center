@@ -4,7 +4,7 @@ A portfolio-grade **Network Operations & Infrastructure Monitoring platform** bu
 
 NetOps Command Center deliberately separates the public portfolio experience from private-network access:
 
-- **Portfolio Demo Mode** — the deployed dashboard uses representative telemetry so recruiters can explore the interface safely.
+- **Browser Workspace Mode** — the deployed dashboard is directly usable and stores workspace changes in the browser while using safe seeded telemetry.
 - **Live Agent Mode** — a Python monitoring agent runs inside an authorized LAN and provides real discovery, availability, latency, service, alert, and troubleshooting data.
 
 The cloud-hosted dashboard does **not** pretend it can scan a private network.
@@ -36,7 +36,7 @@ The cloud-hosted dashboard does **not** pretend it can scan a private network.
 - Responsive browser interface
 - REST API through FastAPI
 - Background monitoring worker
-- Demo/live data-source switching
+- Browser-workspace/live-agent data-source switching
 - GitHub Actions syntax validation
 - Automated static deployment workflow
 
@@ -47,7 +47,7 @@ Public Portfolio
 ┌─────────────────────────────────┐
 │ Browser Dashboard               │
 │ GitHub Pages / static hosting   │
-│ Representative demo telemetry   │
+│ Persistent browser workspace   │
 └─────────────────────────────────┘
 
 
@@ -95,11 +95,11 @@ NetOps-Command-Center/
 └── README.md
 ```
 
-## Public Portfolio Mode
+## Public Browser Workspace
 
-The root application is a static site. Demo mode is selected automatically when the dashboard is opened from public hosting.
+The root application is a static site. Browser Workspace Mode is selected automatically on public hosting and persists editable workspace state in local browser storage.
 
-The demo data represents a small business network containing routers, switches, servers, wireless access points, endpoints, printers, an NVR, and a managed UPS.
+The initial workspace represents a small business network containing routers, switches, servers, wireless access points, endpoints, printers, an NVR, and a managed UPS. Device metadata and workspace settings can then be edited and retained in the browser.
 
 No private network data is uploaded by the repository.
 

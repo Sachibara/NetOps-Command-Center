@@ -21,6 +21,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+import psutil
+
 ROOT = Path(__file__).resolve().parents[1]
 AGENT_DIR = Path(__file__).resolve().parent
 DATA_DIR = AGENT_DIR / "data"
@@ -41,6 +43,8 @@ DEFAULT_CONFIG = {
 DB_LOCK = threading.RLock()
 STOP_EVENT = threading.Event()
 MONITOR_THREAD: threading.Thread | None = None
+NET_LOCK = threading.Lock()
+NET_STATE = {"ts": time.time(), "sent": 0, "recv": 0}
 
 
 def utc_now() -> str:
@@ -156,11 +160,168 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS system_samples (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                cpu_percent REAL,
+                memory_percent REAL,
+                disk_percent REAL,
+                bytes_sent INTEGER,
+                bytes_recv INTEGER
+            )
+            """
+        )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_samples_time ON samples(timestamp)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_state ON alerts(state)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_key ON alerts(alert_key)")
         conn.commit()
 
+
+
+def system_metrics() -> dict[str, Any]:
+    now = time.time()
+    counters = psutil.net_io_counters()
+    with NET_LOCK:
+        previous_ts = float(NET_STATE.get("ts") or now)
+        previous_sent = int(NET_STATE.get("sent") or counters.bytes_sent)
+        previous_recv = int(NET_STATE.get("recv") or counters.bytes_recv)
+        elapsed = max(0.25, now - previous_ts)
+        upload_bps = max(0.0, (counters.bytes_sent - previous_sent) / elapsed)
+        download_bps = max(0.0, (counters.bytes_recv - previous_recv) / elapsed)
+        NET_STATE.update({"ts": now, "sent": counters.bytes_sent, "recv": counters.bytes_recv})
+
+    memory = psutil.virtual_memory()
+    disk_root = Path(os.environ.get("SystemDrive", "C:") + "\\") if os.name == "nt" else Path("/")
+    try:
+        disk = psutil.disk_usage(str(disk_root))
+        disk_percent = float(disk.percent)
+    except OSError:
+        disk_percent = 0.0
+
+    return {
+        "hostname": socket.gethostname(),
+        "platform": platform.platform(),
+        "cpu_percent": round(float(psutil.cpu_percent(interval=None)), 1),
+        "memory_percent": round(float(memory.percent), 1),
+        "disk_percent": round(disk_percent, 1),
+        "upload_bps": round(upload_bps, 2),
+        "download_bps": round(download_bps, 2),
+        "bytes_sent": int(counters.bytes_sent),
+        "bytes_recv": int(counters.bytes_recv),
+        "uptime_seconds": max(0, int(now - psutil.boot_time())),
+    }
+
+
+def record_system_sample() -> None:
+    metrics = system_metrics()
+    with DB_LOCK, db() as conn:
+        conn.execute(
+            """
+            INSERT INTO system_samples(
+                timestamp,cpu_percent,memory_percent,disk_percent,bytes_sent,bytes_recv
+            ) VALUES(?,?,?,?,?,?)
+            """,
+            (
+                utc_now(),
+                metrics["cpu_percent"],
+                metrics["memory_percent"],
+                metrics["disk_percent"],
+                metrics["bytes_sent"],
+                metrics["bytes_recv"],
+            ),
+        )
+        conn.commit()
+
+
+def device_availability_24h(conn: sqlite3.Connection, ip: str) -> float | None:
+    cutoff = datetime.fromtimestamp(time.time() - 86400, tz=timezone.utc).isoformat()
+    row = conn.execute(
+        """
+        SELECT COUNT(*) AS total,
+               SUM(CASE WHEN status='online' THEN 1 ELSE 0 END) AS online
+        FROM samples
+        WHERE device_ip=? AND timestamp>=?
+        """,
+        (ip, cutoff),
+    ).fetchone()
+    if not row or not row["total"]:
+        return None
+    return round((float(row["online"] or 0) / float(row["total"])) * 100.0, 2)
+
+
+def device_detail_payload(ip: str) -> dict[str, Any]:
+    try:
+        ip = str(ipaddress.ip_address(ip))
+    except ValueError as exc:
+        raise ValueError("Invalid device IP address.") from exc
+
+    cutoff = datetime.fromtimestamp(time.time() - 86400, tz=timezone.utc).isoformat()
+    with DB_LOCK, db() as conn:
+        row = conn.execute("SELECT * FROM devices WHERE ip=?", (ip,)).fetchone()
+        if not row:
+            raise KeyError(ip)
+        device = row_to_device(row)
+        device["availability_24h"] = device_availability_24h(conn, ip)
+        samples = conn.execute(
+            """
+            SELECT timestamp,status,latency_ms,packet_loss
+            FROM samples
+            WHERE device_ip=? AND timestamp>=?
+            ORDER BY timestamp ASC
+            LIMIT 500
+            """,
+            (ip, cutoff),
+        ).fetchall()
+    return {
+        "device": device,
+        "samples": [dict(sample) for sample in samples],
+    }
+
+
+def traceroute_host(host: str) -> str:
+    host = normalize_hostname(host)
+    if os.name == "nt":
+        cmd = ["tracert", "-d", "-h", "15", "-w", "800", host]
+    else:
+        cmd = ["traceroute", "-n", "-m", "15", "-w", "1", host]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=35)
+    except FileNotFoundError as exc:
+        raise RuntimeError("Traceroute utility is not installed on this system.") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("Traceroute timed out.") from exc
+    output = ((proc.stdout or "") + (proc.stderr or "")).strip()
+    return output or "Traceroute completed without textual output."
+
+
+def routes_and_interfaces() -> dict[str, Any]:
+    interfaces = []
+    stats = psutil.net_if_stats()
+    for name, addresses in psutil.net_if_addrs().items():
+        interface = {
+            "name": name,
+            "is_up": bool(stats.get(name).isup) if stats.get(name) else None,
+            "speed_mbps": int(stats.get(name).speed) if stats.get(name) and stats.get(name).speed >= 0 else None,
+            "addresses": [],
+        }
+        for address in addresses:
+            interface["addresses"].append({
+                "family": str(address.family),
+                "address": address.address,
+                "netmask": address.netmask,
+            })
+        interfaces.append(interface)
+
+    cmd = ["route", "print"] if os.name == "nt" else ["ip", "route"]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=8)
+        route_output = ((proc.stdout or "") + (proc.stderr or "")).strip()
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        route_output = f"Could not read route table: {exc}"
+
+    return {"interfaces": interfaces, "routes": route_output}
 
 def normalize_hostname(value: str) -> str:
     value = (value or "").strip()
@@ -580,10 +741,16 @@ def monitor_cycle() -> None:
                 except Exception:
                     pass
 
+    try:
+        record_system_sample()
+    except Exception:
+        pass
+
     # Keep the local history bounded.
     cutoff = datetime.fromtimestamp(time.time() - 7 * 86400, tz=timezone.utc).isoformat()
     with DB_LOCK, db() as conn:
         conn.execute("DELETE FROM samples WHERE timestamp<?", (cutoff,))
+        conn.execute("DELETE FROM system_samples WHERE timestamp<?", (cutoff,))
         conn.commit()
 
 
@@ -622,7 +789,11 @@ def row_to_device(row: sqlite3.Row) -> dict[str, Any]:
 def dashboard_payload() -> dict[str, Any]:
     config = load_config()
     with DB_LOCK, db() as conn:
-        devices = [row_to_device(row) for row in conn.execute("SELECT * FROM devices ORDER BY ip").fetchall()]
+        devices = []
+        for row in conn.execute("SELECT * FROM devices ORDER BY ip").fetchall():
+            device = row_to_device(row)
+            device["availability_24h"] = device_availability_24h(conn, row["ip"])
+            devices.append(device)
         alerts = [
             dict(row)
             for row in conn.execute(
@@ -655,6 +826,7 @@ def dashboard_payload() -> dict[str, Any]:
         },
         "devices": devices,
         "alerts": alerts,
+        "system": system_metrics(),
         "latency_samples": [
             {"timestamp": row["timestamp"], "avg_latency_ms": round(float(row["avg_latency_ms"]), 2)}
             for row in reversed(samples)
@@ -678,6 +850,17 @@ class PortRequest(BaseModel):
 
 class ScanRequest(BaseModel):
     subnet: str | None = None
+
+
+class DeviceUpdateRequest(BaseModel):
+    hostname: str = Field(default="", max_length=253)
+    vendor: str = Field(default="", max_length=120)
+    role: str = Field(default="", max_length=120)
+    platform: str = Field(default="", max_length=160)
+
+
+class TracerouteRequest(BaseModel):
+    host: str = Field(min_length=1, max_length=253)
 
 
 @asynccontextmanager
@@ -713,7 +896,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT"],
     allow_headers=["Content-Type"],
 )
 
@@ -732,6 +915,55 @@ def api_health():
 @app.get("/api/dashboard")
 def api_dashboard():
     return dashboard_payload()
+
+
+@app.get("/api/devices/{device_ip}")
+def api_device_detail(device_ip: str):
+    try:
+        return device_detail_payload(device_ip)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Device not found.") from exc
+
+
+@app.put("/api/devices/{device_ip}")
+def api_update_device(device_ip: str, request: DeviceUpdateRequest):
+    try:
+        ip = str(ipaddress.ip_address(device_ip))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid device IP address.") from exc
+
+    with DB_LOCK, db() as conn:
+        row = conn.execute("SELECT ip FROM devices WHERE ip=?", (ip,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Device not found.")
+        conn.execute(
+            """
+            UPDATE devices SET hostname=?, vendor=?, role=?, platform=?, updated_at=?
+            WHERE ip=?
+            """,
+            (
+                request.hostname.strip(),
+                request.vendor.strip() or "Unknown",
+                request.role.strip() or "Device",
+                request.platform.strip() or "Unknown",
+                utc_now(),
+                ip,
+            ),
+        )
+        conn.commit()
+    return device_detail_payload(ip)
+
+
+@app.get("/api/system")
+def api_system():
+    return system_metrics()
+
+
+@app.get("/api/network")
+def api_network():
+    return routes_and_interfaces()
 
 
 @app.post("/api/scan")
@@ -757,6 +989,15 @@ def api_ping(request: PingRequest):
         ]
         return {**result, "output": "\n".join(output)}
     except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/tools/traceroute")
+def api_traceroute(request: TracerouteRequest):
+    try:
+        output = traceroute_host(request.host)
+        return {"host": request.host, "output": output}
+    except (ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 

@@ -1,0 +1,573 @@
+(() => {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  const qsa = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+  const pageMeta = {
+    overview: ["Network health", "Overview"],
+    devices: ["Discovery & monitoring", "Devices"],
+    alerts: ["Operations awareness", "Alerts"],
+    tools: ["Troubleshooting toolkit", "Troubleshooting"],
+    inventory: ["Asset visibility", "Inventory"],
+    about: ["Project architecture", "About"]
+  };
+
+  const serviceNames = {
+    22: "SSH", 53: "DNS", 80: "HTTP", 88: "Kerberos", 135: "RPC",
+    389: "LDAP", 443: "HTTPS", 445: "SMB", 554: "RTSP", 3389: "RDP",
+    8080: "HTTP-ALT", 9100: "RAW"
+  };
+
+  const state = {
+    mode: localStorage.getItem("netops_mode") || (location.port === "8787" ? "live" : "demo"),
+    agentUrl: localStorage.getItem("netops_agent_url") || (location.port === "8787" ? location.origin : "http://127.0.0.1:8787"),
+    activePage: "overview",
+    data: null,
+    lastRefresh: null
+  };
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function toast(title, message = "", type = "info") {
+    const node = document.createElement("div");
+    node.className = "toast" + (type === "error" ? " error" : "");
+    const strong = document.createElement("strong");
+    strong.textContent = title;
+    const span = document.createElement("span");
+    span.textContent = message;
+    node.append(strong, span);
+    $("toastRegion").appendChild(node);
+    setTimeout(() => node.remove(), 4400);
+  }
+
+  function formatTime(iso) {
+    if (!iso) return "Never";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return String(iso);
+    const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+    if (seconds < 60) return seconds + "s ago";
+    if (seconds < 3600) return Math.round(seconds / 60) + "m ago";
+    if (seconds < 86400) return Math.round(seconds / 3600) + "h ago";
+    return Math.round(seconds / 86400) + "d ago";
+  }
+
+  function formatClock(date = new Date()) {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
+
+  async function fetchJson(url, options = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), options.timeout || 8000);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          ...(options.headers || {})
+        }
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.detail || data.error || "Request failed (" + response.status + ")");
+      }
+      return data;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function agentApi(path) {
+    return state.agentUrl.replace(/\/$/, "") + path;
+  }
+
+  function setAgentStatus(kind, title, detail) {
+    $("agentDot").className = "status-dot" + (kind ? " " + kind : "");
+    $("agentStatus").textContent = title;
+    $("agentDetail").textContent = detail;
+  }
+
+  async function loadData(showToast = false) {
+    if (state.mode === "demo") {
+      state.data = JSON.parse(JSON.stringify(window.NETOPS_DEMO));
+      // Keep relative-time labels fresh while preserving the representative values.
+      state.data.generated_at = new Date().toISOString();
+      state.lastRefresh = new Date();
+      setAgentStatus("", "Demo mode", "Portfolio telemetry");
+      renderAll();
+      if (showToast) toast("Dashboard refreshed", "Representative demo telemetry loaded.");
+      return;
+    }
+
+    setAgentStatus("", "Connecting…", state.agentUrl);
+    try {
+      const data = await fetchJson(agentApi("/api/dashboard"), { timeout: 10000 });
+      state.data = data;
+      state.lastRefresh = new Date();
+      setAgentStatus("live", "Live agent connected", state.agentUrl.replace(/^https?:\/\//, ""));
+      renderAll();
+      if (showToast) toast("Live data refreshed", "Latest network telemetry received from the NetOps Agent.");
+    } catch (error) {
+      setAgentStatus("error", "Agent unavailable", state.agentUrl.replace(/^https?:\/\//, ""));
+      toast("Could not reach NetOps Agent", error.message, "error");
+      if (!state.data) {
+        state.data = JSON.parse(JSON.stringify(window.NETOPS_DEMO));
+        renderAll();
+      }
+    }
+  }
+
+  function openPage(page) {
+    state.activePage = page;
+    qsa("[data-page-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.pagePanel === page));
+    qsa("[data-page]").forEach((button) => button.classList.toggle("active", button.dataset.page === page));
+    $("pageEyebrow").textContent = pageMeta[page][0];
+    $("pageTitle").textContent = pageMeta[page][1];
+    $("sidebar").classList.remove("open");
+    if (page === "devices") renderDevices();
+    if (page === "alerts") renderAlerts();
+    if (page === "inventory") renderInventory();
+  }
+
+  qsa("[data-page]").forEach((button) => button.addEventListener("click", () => openPage(button.dataset.page)));
+  qsa("[data-go]").forEach((button) => button.addEventListener("click", () => openPage(button.dataset.go)));
+  $("menuButton").addEventListener("click", () => $("sidebar").classList.toggle("open"));
+
+  function deriveStats() {
+    const devices = state.data?.devices || [];
+    const activeAlerts = (state.data?.alerts || []).filter((a) => a.state !== "resolved");
+    const online = devices.filter((d) => d.status === "online");
+    const offline = devices.filter((d) => d.status === "offline");
+    const unknown = devices.filter((d) => !["online", "offline"].includes(d.status));
+    const latencies = online.map((d) => Number(d.latency_ms)).filter(Number.isFinite);
+    const avgLatency = latencies.length ? latencies.reduce((a, b) => a + b, 0) / latencies.length : 0;
+    const availability = devices.length ? (online.length / devices.length) * 100 : 0;
+    return { devices, activeAlerts, online, offline, unknown, avgLatency, availability };
+  }
+
+  function renderOverview() {
+    if (!state.data) return;
+    const s = deriveStats();
+
+    $("statDevices").textContent = s.devices.length;
+    $("sidebarMonitorCount").textContent = s.devices.length + " device" + (s.devices.length === 1 ? "" : "s");
+    $("statAvailability").textContent = s.availability.toFixed(1) + "%";
+    $("statLatency").textContent = s.avgLatency.toFixed(1) + " ms";
+    $("statAlerts").textContent = s.activeAlerts.length;
+    $("statAlertsNote").textContent = s.activeAlerts.some((a) => a.severity === "critical") ? "Critical attention required" : "Requires attention";
+
+    $("onlineCount").textContent = s.online.length;
+    $("offlineCount").textContent = s.offline.length;
+    $("alertCount").textContent = s.activeAlerts.length;
+
+    const healthTitle = $("healthTitle");
+    const healthBadge = $("healthBadge");
+    const healthCopy = $("healthCopy");
+    healthBadge.className = "pill";
+    if (s.offline.length || s.activeAlerts.some((a) => a.severity === "critical")) {
+      healthTitle.textContent = "Degraded";
+      healthBadge.textContent = "Attention required";
+      healthBadge.classList.add("negative");
+      healthCopy.textContent = "One or more monitored devices are unreachable or have a critical operational alert.";
+    } else if (s.activeAlerts.some((a) => a.severity === "warning")) {
+      healthTitle.textContent = "Operational";
+      healthBadge.textContent = "Warnings present";
+      healthBadge.classList.add("warning");
+      healthCopy.textContent = "Core monitoring is operational, with warning conditions that should be reviewed.";
+    } else {
+      healthTitle.textContent = "Healthy";
+      healthBadge.textContent = "Operational";
+      healthBadge.classList.add("positive");
+      healthCopy.textContent = "All monitored infrastructure is responding within configured operational thresholds.";
+    }
+
+    $("healthOrb").classList.toggle("active", s.online.length > 0);
+
+    $("donutOnline").textContent = s.online.length;
+    $("donutOffline").textContent = s.offline.length;
+    $("donutUnknown").textContent = s.unknown.length;
+    $("donutPercent").textContent = s.availability.toFixed(0) + "%";
+    const total = Math.max(1, s.devices.length);
+    const onlineDeg = (s.online.length / total) * 360;
+    const offlineDeg = onlineDeg + (s.offline.length / total) * 360;
+    $("statusDonut").style.setProperty("--online", onlineDeg + "deg");
+    $("statusDonut").style.setProperty("--offline", offlineDeg + "deg");
+
+    const overviewAlerts = $("overviewAlertList");
+    const recent = [...s.activeAlerts].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 4);
+    overviewAlerts.innerHTML = recent.length ? recent.map((alert) => `
+      <div class="alert-row">
+        <span class="alert-severity ${escapeHtml(alert.severity)}"></span>
+        <div><strong>${escapeHtml(alert.title)}</strong><small>${escapeHtml(alert.device_name || alert.device_ip || "Network")}</small></div>
+        <time>${escapeHtml(formatTime(alert.created_at))}</time>
+      </div>
+    `).join("") : '<div class="empty-state">No active alerts.</div>';
+
+    const top = s.devices.filter((d) => d.status === "online" && Number.isFinite(Number(d.latency_ms)))
+      .sort((a, b) => Number(b.latency_ms) - Number(a.latency_ms)).slice(0, 5);
+    $("topLatencyList").innerHTML = top.map((device) => `
+      <div class="rank-item">
+        <div><strong>${escapeHtml(device.hostname || device.ip)}</strong><span>${escapeHtml(device.ip)} · ${escapeHtml(device.role || "Device")}</span></div>
+        <span class="latency-value">${Number(device.latency_ms).toFixed(1)} ms</span>
+      </div>
+    `).join("") || '<div class="empty-state">No latency data.</div>';
+
+    drawLatencyChart();
+  }
+
+  function drawLatencyChart() {
+    const canvas = $("latencyChart");
+    if (!canvas || !state.data) return;
+    const samples = state.data.latency_samples || [];
+    const rect = canvas.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    const width = Math.max(360, rect.width);
+    const height = 255;
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+    const ctx = canvas.getContext("2d");
+    ctx.scale(ratio, ratio);
+
+    const css = getComputedStyle(document.documentElement);
+    const border = css.getPropertyValue("--border").trim();
+    const green = css.getPropertyValue("--green").trim();
+    const amber = css.getPropertyValue("--amber").trim();
+    const muted = css.getPropertyValue("--muted").trim();
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = border;
+    for (let i = 1; i < 5; i++) {
+      const y = (height / 5) * i;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+    }
+
+    const threshold = Number(state.data.overview?.warning_latency_ms || 100);
+    const values = samples.map((s) => Number(s.avg_latency_ms)).filter(Number.isFinite);
+    const max = Math.max(threshold * 1.2, ...values, 10);
+
+    const thresholdY = height - (threshold / max) * (height - 26) - 13;
+    ctx.setLineDash([6, 6]);
+    ctx.strokeStyle = amber;
+    ctx.beginPath(); ctx.moveTo(0, thresholdY); ctx.lineTo(width, thresholdY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (values.length) {
+      ctx.strokeStyle = green;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      values.forEach((value, index) => {
+        const x = values.length === 1 ? width / 2 : (index / (values.length - 1)) * width;
+        const y = height - (value / max) * (height - 26) - 13;
+        if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = muted;
+    ctx.font = "11px system-ui";
+    ctx.fillText("0 ms", 5, height - 6);
+    ctx.fillText(Math.round(max) + " ms", 5, 14);
+    $("latencyRangeLabel").textContent = samples.length ? samples.length + " recent samples" : "No samples";
+  }
+
+  function serviceTag(port) {
+    const name = serviceNames[port] || port;
+    return '<span title="TCP/' + escapeHtml(port) + '">' + escapeHtml(name) + '</span>';
+  }
+
+  function deviceMatches(device) {
+    const query = $("deviceSearch").value.trim().toLowerCase();
+    const status = $("deviceStatusFilter").value;
+    const role = $("deviceRoleFilter").value;
+    const haystack = [device.ip, device.hostname, device.mac, device.vendor, device.role, device.platform].join(" ").toLowerCase();
+    return (!query || haystack.includes(query))
+      && (status === "all" || device.status === status)
+      && (role === "all" || device.role === role);
+  }
+
+  function updateRoleFilter() {
+    const select = $("deviceRoleFilter");
+    const current = select.value;
+    const roles = [...new Set((state.data?.devices || []).map((d) => d.role).filter(Boolean))].sort();
+    select.innerHTML = '<option value="all">All roles</option>' + roles.map((r) => '<option value="' + escapeHtml(r) + '">' + escapeHtml(r) + "</option>").join("");
+    if (roles.includes(current)) select.value = current;
+  }
+
+  function renderDevices() {
+    if (!state.data) return;
+    updateRoleFilter();
+    const tbody = $("deviceTableBody");
+    const devices = (state.data.devices || []).filter(deviceMatches);
+    if (!devices.length) {
+      tbody.innerHTML = '<tr><td class="empty-state" colspan="8">No devices match the current filters.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = devices.map((d) => `
+      <tr>
+        <td><span class="status-badge ${escapeHtml(d.status || "unknown")}">${escapeHtml(d.status || "unknown")}</span></td>
+        <td class="device-cell"><strong>${escapeHtml(d.hostname || "Unidentified")}</strong><span>${escapeHtml(d.vendor || "Unknown vendor")}</span></td>
+        <td><code>${escapeHtml(d.ip)}</code></td>
+        <td><code>${escapeHtml(d.mac || "Unknown")}</code></td>
+        <td>${escapeHtml(d.role || "Device")}</td>
+        <td>${Number.isFinite(Number(d.latency_ms)) ? Number(d.latency_ms).toFixed(1) + " ms" : "—"}</td>
+        <td><div class="service-tags">${(d.services || []).slice(0, 6).map(serviceTag).join("") || "<span>None</span>"}</div></td>
+        <td>${escapeHtml(formatTime(d.last_seen))}</td>
+      </tr>
+    `).join("");
+  }
+
+  function renderAlerts() {
+    if (!state.data) return;
+    const alerts = state.data.alerts || [];
+    const counts = {
+      critical: alerts.filter((a) => a.state !== "resolved" && a.severity === "critical").length,
+      warning: alerts.filter((a) => a.state !== "resolved" && a.severity === "warning").length,
+      info: alerts.filter((a) => a.state !== "resolved" && a.severity === "info").length,
+      resolved: alerts.filter((a) => a.state === "resolved").length
+    };
+    $("criticalAlertCount").textContent = counts.critical;
+    $("warningAlertCount").textContent = counts.warning;
+    $("infoAlertCount").textContent = counts.info;
+    $("resolvedAlertCount").textContent = counts.resolved;
+
+    const query = $("alertSearch").value.trim().toLowerCase();
+    const severity = $("alertSeverityFilter").value;
+    const status = $("alertStateFilter").value;
+    const filtered = alerts.filter((a) => {
+      const haystack = [a.title, a.message, a.device_name, a.device_ip].join(" ").toLowerCase();
+      return (!query || haystack.includes(query))
+        && (severity === "all" || a.severity === severity)
+        && (status === "all" || (status === "resolved" ? a.state === "resolved" : a.state !== "resolved"));
+    }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    $("alertFeed").innerHTML = filtered.length ? filtered.map((a) => `
+      <article class="alert-card ${escapeHtml(a.severity)}">
+        <div class="alert-icon">${a.severity === "critical" ? "!" : a.severity === "warning" ? "△" : "i"}</div>
+        <div>
+          <h4>${escapeHtml(a.title)} ${a.state === "resolved" ? '<span class="pill positive">Resolved</span>' : ""}</h4>
+          <p>${escapeHtml(a.message)}</p>
+          <div class="alert-meta">${escapeHtml(a.device_name || "Network")} · ${escapeHtml(a.device_ip || "—")}</div>
+        </div>
+        <time>${escapeHtml(formatTime(a.created_at))}</time>
+      </article>
+    `).join("") : '<div class="empty-state">No alerts match the current filters.</div>';
+  }
+
+  function renderInventory() {
+    if (!state.data) return;
+    const devices = state.data.devices || [];
+    const groups = {};
+    devices.forEach((d) => { groups[d.role || "Other"] = (groups[d.role || "Other"] || 0) + 1; });
+    const summary = Object.entries(groups).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    $("inventorySummary").innerHTML = summary.map(([role, count]) => `
+      <div class="inventory-chip"><span>${escapeHtml(role)}</span><strong>${count}</strong></div>
+    `).join("");
+
+    $("inventoryTableBody").innerHTML = devices.map((d) => `
+      <tr>
+        <td>${escapeHtml(d.hostname || "Unidentified")}</td>
+        <td><code>${escapeHtml(d.ip)}</code></td>
+        <td><code>${escapeHtml(d.mac || "Unknown")}</code></td>
+        <td>${escapeHtml(d.vendor || "Unknown")}</td>
+        <td>${escapeHtml(d.role || "Device")}</td>
+        <td>${escapeHtml(d.platform || "Unknown")}</td>
+        <td><div class="service-tags">${(d.services || []).map(serviceTag).join("") || "<span>None</span>"}</div></td>
+        <td><span class="status-badge ${escapeHtml(d.status || "unknown")}">${escapeHtml(d.status || "unknown")}</span></td>
+      </tr>
+    `).join("") || '<tr><td class="empty-state" colspan="8">No inventory data.</td></tr>';
+  }
+
+  function renderAll() {
+    if (!state.data) return;
+    $("lastRefresh").textContent = state.lastRefresh ? formatClock(state.lastRefresh) : "—";
+    renderOverview();
+    renderDevices();
+    renderAlerts();
+    renderInventory();
+  }
+
+  async function scanNetwork() {
+    if (state.mode === "demo") {
+      toast("Demo scan complete", "Representative devices and telemetry are already loaded.");
+      return;
+    }
+    $("scanButton").disabled = true;
+    $("deviceScanButton").disabled = true;
+    try {
+      const result = await fetchJson(agentApi("/api/scan"), { method: "POST", body: "{}" });
+      toast("Discovery complete", (result.discovered ?? 0) + " device(s) detected.");
+      await loadData();
+    } catch (error) {
+      toast("Discovery failed", error.message, "error");
+    } finally {
+      $("scanButton").disabled = false;
+      $("deviceScanButton").disabled = false;
+    }
+  }
+
+  async function runLiveTool(path, body) {
+    return fetchJson(agentApi(path), { method: "POST", body: JSON.stringify(body), timeout: 15000 });
+  }
+
+  $("pingForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const host = $("pingHost").value.trim();
+    $("pingOutput").textContent = "Running ping…";
+    if (state.mode === "demo") {
+      await new Promise((r) => setTimeout(r, 450));
+      $("pingOutput").textContent = `PING ${host}\nReply received\nPackets: Sent = 4, Received = 4, Lost = 0 (0% loss)\nAverage round-trip = 12.4 ms\n\nDemo mode: start the local agent for a real ICMP test.`;
+      return;
+    }
+    try {
+      const r = await runLiveTool("/api/tools/ping", { host });
+      $("pingOutput").textContent = r.output || JSON.stringify(r, null, 2);
+    } catch (error) { $("pingOutput").textContent = "Error: " + error.message; }
+  });
+
+  $("dnsForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const host = $("dnsHost").value.trim();
+    $("dnsOutput").textContent = "Resolving…";
+    if (state.mode === "demo") {
+      await new Promise((r) => setTimeout(r, 300));
+      $("dnsOutput").textContent = `Host: ${host}\nA: 93.184.216.34\n\nDemo mode: start the local agent for a real resolver lookup.`;
+      return;
+    }
+    try {
+      const r = await runLiveTool("/api/tools/dns", { host });
+      $("dnsOutput").textContent = r.output || JSON.stringify(r, null, 2);
+    } catch (error) { $("dnsOutput").textContent = "Error: " + error.message; }
+  });
+
+  $("portForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const host = $("portHost").value.trim();
+    const port = Number($("portNumber").value);
+    $("portOutput").textContent = "Testing TCP connection…";
+    if (state.mode === "demo") {
+      await new Promise((r) => setTimeout(r, 300));
+      $("portOutput").textContent = `${host}:${port} — OPEN\nTCP handshake completed in 18 ms\n\nDemo mode: start the local agent for a real service check.`;
+      return;
+    }
+    try {
+      const r = await runLiveTool("/api/tools/port", { host, port });
+      $("portOutput").textContent = r.output || JSON.stringify(r, null, 2);
+    } catch (error) { $("portOutput").textContent = "Error: " + error.message; }
+  });
+
+  function ipToInt(ip) {
+    const parts = ip.split(".").map(Number);
+    if (parts.length !== 4 || parts.some((x) => !Number.isInteger(x) || x < 0 || x > 255)) throw new Error("Invalid IPv4 address");
+    return (((parts[0] * 256 + parts[1]) * 256 + parts[2]) * 256 + parts[3]) >>> 0;
+  }
+
+  function intToIp(n) {
+    return [n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join(".");
+  }
+
+  function calculateSubnet(cidr) {
+    const [ip, prefixRaw] = cidr.trim().split("/");
+    const prefix = Number(prefixRaw);
+    if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) throw new Error("Prefix must be between /0 and /32");
+    const value = ipToInt(ip);
+    const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+    const network = (value & mask) >>> 0;
+    const broadcast = (network | (~mask >>> 0)) >>> 0;
+    const total = 2 ** (32 - prefix);
+    const usable = prefix >= 31 ? total : Math.max(0, total - 2);
+    const first = prefix === 32 ? network : prefix === 31 ? network : network + 1;
+    const last = prefix === 32 ? broadcast : prefix === 31 ? broadcast : broadcast - 1;
+    return {
+      network: intToIp(network),
+      broadcast: intToIp(broadcast),
+      netmask: intToIp(mask),
+      first: intToIp(first >>> 0),
+      last: intToIp(last >>> 0),
+      total,
+      usable
+    };
+  }
+
+  $("subnetForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    try {
+      const r = calculateSubnet($("subnetInput").value);
+      $("subnetOutput").textContent = [
+        "Network:    " + r.network,
+        "Netmask:    " + r.netmask,
+        "Broadcast:  " + r.broadcast,
+        "First host: " + r.first,
+        "Last host:  " + r.last,
+        "Addresses:  " + r.total.toLocaleString(),
+        "Usable:     " + r.usable.toLocaleString()
+      ].join("\n");
+    } catch (error) {
+      $("subnetOutput").textContent = "Error: " + error.message;
+    }
+  });
+
+  function exportInventory() {
+    const devices = state.data?.devices || [];
+    const rows = [["Hostname","IP","MAC","Vendor","Role","Platform","Status","Latency ms","Services","Last seen"]];
+    devices.forEach((d) => rows.push([
+      d.hostname || "", d.ip || "", d.mac || "", d.vendor || "", d.role || "", d.platform || "",
+      d.status || "", d.latency_ms ?? "", (d.services || []).join("|"), d.last_seen || ""
+    ]));
+    const csv = rows.map((row) => row.map((v) => '"' + String(v).replaceAll('"', '""') + '"').join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "netops-inventory.csv"; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  $("refreshButton").addEventListener("click", () => loadData(true));
+  $("deviceRefreshButton").addEventListener("click", () => loadData(true));
+  $("alertsRefreshButton").addEventListener("click", () => loadData(true));
+  $("scanButton").addEventListener("click", scanNetwork);
+  $("deviceScanButton").addEventListener("click", scanNetwork);
+  $("exportInventoryButton").addEventListener("click", exportInventory);
+
+  ["deviceSearch","deviceStatusFilter","deviceRoleFilter"].forEach((id) => $(id).addEventListener(id === "deviceSearch" ? "input" : "change", renderDevices));
+  ["alertSearch","alertSeverityFilter","alertStateFilter"].forEach((id) => $(id).addEventListener(id === "alertSearch" ? "input" : "change", renderAlerts));
+
+  const dialog = $("connectionDialog");
+  $("connectionButton").addEventListener("click", () => {
+    qsa('input[name="mode"]').forEach((radio) => { radio.checked = radio.value === state.mode; });
+    $("agentUrlInput").value = state.agentUrl;
+    dialog.showModal();
+  });
+
+  $("saveConnectionButton").addEventListener("click", (event) => {
+    event.preventDefault();
+    const selected = qsa('input[name="mode"]').find((r) => r.checked)?.value || "demo";
+    const url = $("agentUrlInput").value.trim().replace(/\/$/, "");
+    if (selected === "live" && !/^https?:\/\//i.test(url)) {
+      toast("Invalid agent URL", "Use a URL such as http://127.0.0.1:8787", "error");
+      return;
+    }
+    state.mode = selected;
+    state.agentUrl = url || "http://127.0.0.1:8787";
+    localStorage.setItem("netops_mode", state.mode);
+    localStorage.setItem("netops_agent_url", state.agentUrl);
+    dialog.close();
+    loadData(true);
+  });
+
+  window.addEventListener("resize", drawLatencyChart);
+
+  setInterval(() => {
+    if (state.mode === "live" && document.visibilityState === "visible") loadData(false);
+  }, 30000);
+
+  loadData(false);
+})();

@@ -3,624 +3,484 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#07121f">
-  <meta name="description" content="NetOps Command Center - network monitoring, device inventory, alerts, and troubleshooting dashboard.">
-  <title>NetOps Command Center</title>
-  <link rel="stylesheet" href="./styles.css">
-  <script src="./demo-data.js" defer></script>
-  <script src="./app.js" defer></script>
+  <meta name="theme-color" content="#07131f">
+  <meta name="description" content="NetOps Enterprise unified network operations platform: NOC monitoring, topology, IPAM, configuration backups, troubleshooting, documentation, alerts, and audit.">
+  <title>NetOps Enterprise | Unified Network Operations</title>
+  <link rel="stylesheet" href="/projects/netops-enterprise/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.0"></script>
+  <script src="/projects/netops-enterprise/cloud.js" defer></script>
+  <script src="/projects/netops-enterprise/app.js" defer></script>
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar" id="sidebar">
-      <a class="brand" href="#overview" aria-label="NetOps Command Center">
-        <div class="brand-mark">
-          <span class="brand-ring ring-a"></span>
-          <span class="brand-ring ring-b"></span>
-          <span class="brand-core">N</span>
-        </div>
+<div class="shell">
+  <aside class="rail">
+    <div class="brand">
+      <div class="brand-symbol">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div>
+        <strong>NETOPS</strong>
+        <small>ENTERPRISE</small>
+      </div>
+    </div>
+
+    <div class="rail-state">
+      <span class="pulse"></span>
+      <div>
+        <b>NOC FABRIC ONLINE</b>
+        <small>Unified demo workspace</small>
+      </div>
+    </div>
+
+    <div class="nav-label">OPERATIONS</div>
+    <nav class="nav">
+      <button class="nav-btn active" data-page="overview"><i>01</i><span>Command Center</span></button>
+      <button class="nav-btn" data-page="topology"><i>02</i><span>Topology</span></button>
+      <button class="nav-btn" data-page="devices"><i>03</i><span>Devices</span></button>
+      <button class="nav-btn" data-page="health"><i>04</i><span>Health</span></button>
+      <button class="nav-btn" data-page="ipam"><i>05</i><span>IPAM</span></button>
+      <button class="nav-btn" data-page="configs"><i>06</i><span>Config Vault</span></button>
+      <button class="nav-btn" data-page="troubleshoot"><i>07</i><span>Troubleshoot</span></button>
+      <button class="nav-btn" data-page="docs"><i>08</i><span>Documentation</span></button>
+      <button class="nav-btn" data-page="alerts"><i>09</i><span>Alerts</span></button>
+      <button class="nav-btn" data-page="audit"><i>10</i><span>Audit</span></button>
+    </nav>
+
+    <div class="rail-foot">
+      <b>Portfolio-safe mode</b>
+      <p>Discovery, probes, backups, and restore actions are simulated unless an authorized agent/backend is connected.</p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="page-title">
+        <span id="pageCode">NOC / 01</span>
         <div>
-          <strong>NetOps</strong>
-          <span>Command Center</span>
+          <p id="pageEyebrow">Unified network operations</p>
+          <h1 id="pageTitle">Command Center</h1>
         </div>
-      </a>
-
-      <div class="agent-card">
-        <div class="status-line">
-          <span class="status-dot" id="agentDot"></span>
-          <div>
-            <strong id="agentStatus">Browser workspace</strong>
-            <span id="agentDetail">Saved locally in this browser</span>
-          </div>
-        </div>
-        <button class="link-button" id="connectionButton" type="button">Connection settings</button>
       </div>
 
-      <nav class="sidebar-nav" aria-label="Primary">
-        <button class="nav-item active" data-page="overview"><span>▦</span>Overview</button>
-        <button class="nav-item" data-page="devices"><span>◫</span>Devices</button>
-        <button class="nav-item" data-page="topology"><span>⌬</span>Topology</button>
-        <button class="nav-item" data-page="alerts"><span>△</span>Alerts</button>
-        <button class="nav-item" data-page="tools"><span>⌁</span>Troubleshooting</button>
-        <button class="nav-item" data-page="inventory"><span>▤</span>Inventory</button>
-        <button class="nav-item" data-page="settings"><span>⚙</span>Settings</button>
-        <button class="nav-item" data-page="about"><span>ⓘ</span>About</button>
-      </nav>
-
-      <div class="sidebar-footer">
-        <div class="mini-kpi">
-          <span>Monitoring</span>
-          <strong id="sidebarMonitorCount">0 devices</strong>
+      <div class="top-actions">
+        <div class="search-wrap">
+          <input id="globalSearch" type="search" placeholder="Search device, IP, subnet, VLAN, alert...">
+          <div id="searchResults" class="search-results" hidden></div>
         </div>
-        <p>Built for Network Operations, IT Support, and Infrastructure Engineering.</p>
+        <button class="btn ghost" id="exportBtn">Export Workspace</button>
+        <label class="btn ghost file-label">Import<input id="importInput" type="file" accept="application/json"></label>
+        <div class="cloud-user" id="cloudUser" hidden>
+          <span id="cloudUserLabel">Cloud user</span>
+          <b id="cloudRoleLabel">admin</b>
+          <button class="btn ghost" id="cloudSignOutBtn">Sign Out</button>
+        </div>
       </div>
-    </aside>
+    </header>
 
-    <section class="workspace">
-      <header class="topbar">
-        <div class="topbar-left">
-          <button class="menu-button" id="menuButton" aria-label="Toggle navigation">☰</button>
-          <div>
-            <p class="eyebrow" id="pageEyebrow">Network health</p>
-            <h1 id="pageTitle">Overview</h1>
+    <section class="status-ribbon">
+      <div><span class="dot green"></span><b>MONITORING</b><small id="ribbonMonitoring">ACTIVE</small></div>
+      <div><span>DEVICES</span><b id="ribbonDevices">0</b><small>managed</small></div>
+      <div><span>HEALTH</span><b id="ribbonHealth">0%</b><small>fleet score</small></div>
+      <div><span>IPAM</span><b id="ribbonIpam">0%</b><small>used</small></div>
+      <div><span>BACKUP</span><b id="ribbonBackup">0%</b><small>success</small></div>
+      <div><span>ALERTS</span><b id="ribbonAlerts">0</b><small>active</small></div>
+    </section>
+
+    <!-- OVERVIEW -->
+    <section class="page active" data-panel="overview">
+      <div class="hero-grid">
+        <article class="hero-card">
+          <div class="hero-tag">NETWORK OPERATIONS ATLAS</div>
+          <h2>See the network as one living system.</h2>
+          <p>NetOps Enterprise unifies discovery, telemetry, IPAM, configuration history, troubleshooting, topology, documentation, and alert response around the same network inventory.</p>
+          <div class="hero-actions">
+            <button class="btn primary" data-go="topology">Open Topology</button>
+            <button class="btn ghost" data-go="troubleshoot">Run Diagnostic</button>
           </div>
+          <div class="hero-chips">
+            <span>NOC</span><span>IPAM</span><span>CONFIG</span><span>HEALTH</span><span>TOPOLOGY</span><span>DOCS</span>
+          </div>
+        </article>
+
+        <article class="radar-card">
+          <div class="card-head">
+            <div><span>NETWORK PULSE</span><h3>Operational radar</h3></div>
+            <b id="radarLabel">CALCULATING</b>
+          </div>
+          <div class="radar-wrap">
+            <svg id="radarSvg" viewBox="0 0 320 320" role="img" aria-label="Network operational radar">
+              <g class="radar-grid">
+                <polygon points="160,28 278,96 278,232 160,300 42,232 42,96"></polygon>
+                <polygon points="160,61 249,112 249,216 160,267 71,216 71,112"></polygon>
+                <polygon points="160,94 221,129 221,199 160,234 99,199 99,129"></polygon>
+                <line x1="160" y1="28" x2="160" y2="300"></line>
+                <line x1="42" y1="96" x2="278" y2="232"></line>
+                <line x1="278" y1="96" x2="42" y2="232"></line>
+              </g>
+              <polygon id="radarShape" class="radar-shape" points=""></polygon>
+              <g class="radar-labels">
+                <text x="160" y="18">AVAILABILITY</text>
+                <text x="286" y="92">LATENCY</text>
+                <text x="286" y="246">CAPACITY</text>
+                <text x="160" y="318">CONFIG</text>
+                <text x="8" y="246">IPAM</text>
+                <text x="4" y="92">ALERTS</text>
+              </g>
+            </svg>
+            <div class="radar-score">
+              <strong id="overviewHealthScore">0%</strong>
+              <span>network health</span>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div class="metric-grid">
+        <article><span>Managed Devices</span><strong id="kpiDevices">0</strong><small id="kpiDevicesSub">0 online</small></article>
+        <article><span>Active Alerts</span><strong id="kpiAlerts">0</strong><small id="kpiCriticalSub">0 critical</small></article>
+        <article><span>Subnets</span><strong id="kpiSubnets">0</strong><small id="kpiSubnetsSub">0 sites</small></article>
+        <article><span>Config Backups</span><strong id="kpiBackups">0</strong><small id="kpiBackupsSub">0 changed</small></article>
+        <article><span>Monitored Services</span><strong id="kpiServices">0</strong><small id="kpiServicesSub">0 degraded</small></article>
+      </div>
+
+      <div class="visual-grid">
+        <article class="panel wide">
+          <div class="panel-head">
+            <div><span class="kicker">LATENCY TELEMETRY</span><h3>Network response trend</h3></div>
+            <span class="legend"><i class="cyan"></i> avg latency</span>
+          </div>
+          <svg id="latencyChart" class="line-chart" viewBox="0 0 760 250" role="img" aria-label="Latency history">
+            <g class="chart-grid">
+              <line x1="46" y1="28" x2="742" y2="28"></line>
+              <line x1="46" y1="82" x2="742" y2="82"></line>
+              <line x1="46" y1="136" x2="742" y2="136"></line>
+              <line x1="46" y1="190" x2="742" y2="190"></line>
+              <line x1="46" y1="232" x2="742" y2="232"></line>
+            </g>
+            <path id="latencyArea" class="chart-area" d=""></path>
+            <polyline id="latencyLine" class="chart-line" points=""></polyline>
+            <g id="latencyPoints"></g>
+            <g id="latencyLabels" class="chart-labels"></g>
+          </svg>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div><span class="kicker">CAPACITY</span><h3>Subnet pressure</h3></div>
+          </div>
+          <div id="capacityBars" class="capacity-bars"></div>
+        </article>
+
+        <article class="panel topology-mini-panel">
+          <div class="panel-head">
+            <div><span class="kicker">SITE FABRIC</span><h3>Operational distribution</h3></div>
+          </div>
+          <div id="siteFabric" class="site-fabric"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div><span class="kicker">CONFIG HYGIENE</span><h3>Backup posture</h3></div>
+          </div>
+          <div id="backupPosture" class="donut-block"></div>
+        </article>
+      </div>
+
+      <div class="launch-grid">
+        <button class="launch-card cyan" data-go="health"><i>MON</i><div><b>Infrastructure Health</b><small>Hosts, services, telemetry & incidents</small></div><span>↗</span></button>
+        <button class="launch-card purple" data-go="ipam"><i>IP</i><div><b>IPAM & VLANs</b><small>Subnets, addresses, utilization & conflicts</small></div><span>↗</span></button>
+        <button class="launch-card orange" data-go="configs"><i>CFG</i><div><b>Config Vault</b><small>Backups, versions, diff & restore staging</small></div><span>↗</span></button>
+        <button class="launch-card green" data-go="docs"><i>DOC</i><div><b>Network Documentation</b><small>Inventory, topology, ports & change notes</small></div><span>↗</span></button>
+      </div>
+
+      <div class="grid two">
+        <article class="panel">
+          <div class="panel-head"><div><span class="kicker">ATTENTION</span><h3>Network issues requiring action</h3></div><button class="text-btn" data-go="alerts">Open Alerts</button></div>
+          <div id="attentionList" class="stack"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><span class="kicker">CHANGE FEED</span><h3>Latest operational activity</h3></div><button class="text-btn" data-go="audit">Full Audit</button></div>
+          <div id="overviewAudit" class="timeline"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- TOPOLOGY -->
+    <section class="page" data-panel="topology">
+      <div class="section-head">
+        <div><span class="kicker">NETWORK MAP</span><h2>Topology</h2><p>Interactive logical topology generated from the shared network inventory and site relationships.</p></div>
+        <button class="btn ghost" id="fitTopologyBtn">Fit View</button>
+      </div>
+      <article class="topology-board">
+        <div class="topology-toolbar">
+          <select id="topologySiteFilter"><option value="">All sites</option></select>
+          <select id="topologyRoleFilter"><option value="">All roles</option></select>
+          <label><input id="topologyLabelsToggle" type="checkbox" checked> Show labels</label>
         </div>
-
-        <div class="topbar-actions">
-          <div class="clock-block">
-            <span>Last refresh</span>
-            <strong id="lastRefresh">—</strong>
-          </div>
-          <button class="ghost-button" id="refreshButton" type="button">Refresh</button>
-          <button class="primary-button" id="scanButton" type="button">Scan network</button>
+        <div id="topologyCanvas" class="topology-canvas"></div>
+        <div class="topology-legend">
+          <span><i class="state-online"></i>Online</span><span><i class="state-warning"></i>Warning</span><span><i class="state-offline"></i>Offline</span><span><i class="state-maint"></i>Maintenance</span>
         </div>
-      </header>
+      </article>
+    </section>
 
-      <main>
-        <section class="page active" data-page-panel="overview">
-          <div class="hero-grid">
-            <article class="panel health-hero">
-              <div>
-                <p class="eyebrow">Network posture</p>
-                <div class="health-title-row">
-                  <h2 id="healthTitle">Healthy</h2>
-                  <span class="pill positive" id="healthBadge">Operational</span>
-                </div>
-                <p class="hero-copy" id="healthCopy">Monitoring infrastructure health, reachability, latency, services, and alerts.</p>
-                <div class="health-meta">
-                  <span><i></i><strong id="onlineCount">0</strong> online</span>
-                  <span><i></i><strong id="offlineCount">0</strong> offline</span>
-                  <span><i></i><strong id="alertCount">0</strong> active alerts</span>
-                </div>
-              </div>
+    <!-- DEVICES -->
+    <section class="page" data-panel="devices">
+      <div class="section-head">
+        <div><span class="kicker">SHARED INVENTORY</span><h2>Devices</h2><p>One network inventory shared by monitoring, IPAM, configs, troubleshooting, and documentation.</p></div>
+        <button class="btn primary" id="scanNetworkBtn">Simulate Discovery</button>
+      </div>
+      <div class="toolbar">
+        <input id="deviceSearch" type="search" placeholder="Search hostname, IP, vendor, role...">
+        <select id="deviceSiteFilter"><option value="">All sites</option></select>
+        <select id="deviceStatusFilter"><option value="">All states</option><option value="online">Online</option><option value="warning">Warning</option><option value="offline">Offline</option><option value="maintenance">Maintenance</option></select>
+      </div>
+      <article class="panel table-panel">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Device</th><th>IP</th><th>Role</th><th>Site</th><th>Status</th><th>Latency</th><th>Availability</th><th>Config</th><th></th></tr></thead>
+            <tbody id="deviceRows"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
 
-              <div class="health-orb" id="healthOrb" aria-hidden="true">
-                <span class="orbit orbit-1"></span>
-                <span class="orbit orbit-2"></span>
-                <span class="orbit orbit-3"></span>
-                <span class="orb-center">●</span>
-              </div>
-            </article>
+    <!-- HEALTH -->
+    <section class="page" data-panel="health">
+      <div class="section-head">
+        <div><span class="kicker">INFRASTRUCTURE HEALTH</span><h2>Health Monitor</h2><p>Host resource health, service status, response time, uptime, maintenance, and incident context.</p></div>
+        <button class="btn primary" id="collectTelemetryBtn">Collect Sample</button>
+      </div>
+      <div class="health-summary">
+        <div class="health-orb"><strong id="healthScore">0%</strong><span>health</span></div>
+        <div id="healthSummaryCards" class="health-summary-cards"></div>
+      </div>
+      <div class="grid two">
+        <article class="panel">
+          <div class="panel-head"><div><span class="kicker">HOSTS</span><h3>Infrastructure nodes</h3></div></div>
+          <div id="hostCards" class="host-grid"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><span class="kicker">SERVICES</span><h3>Service dependency view</h3></div></div>
+          <div id="serviceRows" class="stack"></div>
+        </article>
+      </div>
+    </section>
 
-            <article class="panel quick-actions">
-              <div class="panel-heading">
-                <div>
-                  <p class="eyebrow">Operations</p>
-                  <h3>Quick actions</h3>
-                </div>
-              </div>
-              <button class="action-tile" data-go="devices">
-                <span class="tile-icon">◎</span>
-                <span><strong>Review devices</strong><small>Reachability & inventory</small></span>
-                <b>→</b>
-              </button>
-              <button class="action-tile" data-go="alerts">
-                <span class="tile-icon">△</span>
-                <span><strong>Inspect alerts</strong><small>Availability & latency</small></span>
-                <b>→</b>
-              </button>
-              <button class="action-tile" data-go="tools">
-                <span class="tile-icon">⌁</span>
-                <span><strong>Run diagnostics</strong><small>Ping, DNS, port, subnet</small></span>
-                <b>→</b>
-              </button>
-            </article>
+    <!-- IPAM -->
+    <section class="page" data-panel="ipam">
+      <div class="section-head">
+        <div><span class="kicker">ADDRESS INTELLIGENCE</span><h2>IPAM & Subnet Manager</h2><p>Subnet capacity, VLANs, IP assignments, conflicts, and allocation planning integrated with live inventory.</p></div>
+        <button class="btn primary" id="openPlannerBtn">Subnet Planner</button>
+      </div>
+      <div class="ipam-summary" id="ipamSummary"></div>
+      <div class="grid two">
+        <article class="panel">
+          <div class="panel-head"><div><span class="kicker">SUBNETS</span><h3>Capacity & utilization</h3></div></div>
+          <div id="subnetCards" class="subnet-grid"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><span class="kicker">VLANS</span><h3>Segmentation plan</h3></div></div>
+          <div id="vlanRows" class="stack"></div>
+        </article>
+      </div>
+      <article class="panel table-panel">
+        <div class="panel-head padded"><div><span class="kicker">ADDRESS RECORDS</span><h3>Assignments & conflicts</h3></div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>IP</th><th>Hostname</th><th>Subnet</th><th>Site</th><th>State</th><th>Owner</th><th>MAC</th></tr></thead>
+            <tbody id="addressRows"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <!-- CONFIGS -->
+    <section class="page" data-panel="configs">
+      <div class="section-head">
+        <div><span class="kicker">CONFIGURATION VAULT</span><h2>Config Backup Manager</h2><p>Versioned network configuration backups, change detection, diff analysis, schedules, and restore staging.</p></div>
+        <button class="btn primary" id="backupAllBtn">Backup All</button>
+      </div>
+      <div class="config-summary" id="configSummary"></div>
+      <div class="grid two">
+        <article class="panel">
+          <div class="panel-head"><div><span class="kicker">BACKUP STATUS</span><h3>Managed network devices</h3></div></div>
+          <div id="configDeviceRows" class="stack"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><span class="kicker">VERSION DIFF</span><h3>Compare configuration</h3></div></div>
+          <div class="compare-controls">
+            <select id="compareDevice"></select>
+            <select id="compareLeft"></select>
+            <select id="compareRight"></select>
+            <button class="btn ghost" id="runCompareBtn">Compare</button>
           </div>
+          <div id="configDiff" class="config-diff">Select versions and compare.</div>
+        </article>
+      </div>
+    </section>
 
-          <div class="stats-grid">
-            <article class="stat-card">
-              <span class="stat-label">Managed devices</span>
-              <strong id="statDevices">0</strong>
-              <small id="statDevicesNote">Network inventory</small>
-            </article>
-            <article class="stat-card">
-              <span class="stat-label">Availability</span>
-              <strong id="statAvailability">0%</strong>
-              <small>Current monitored estate</small>
-            </article>
-            <article class="stat-card">
-              <span class="stat-label">Average latency</span>
-              <strong id="statLatency">0 ms</strong>
-              <small>Across reachable devices</small>
-            </article>
-            <article class="stat-card">
-              <span class="stat-label">Open alerts</span>
-              <strong id="statAlerts">0</strong>
-              <small id="statAlertsNote">Requires attention</small>
-            </article>
+    <!-- TROUBLESHOOT -->
+    <section class="page" data-panel="troubleshoot">
+      <div class="section-head">
+        <div><span class="kicker">GUIDED TROUBLESHOOTING</span><h2>Network Diagnostic Workbench</h2><p>Cross-reference device health, IPAM, path, services, alerts, and configuration state in one diagnostic flow.</p></div>
+      </div>
+      <div class="grid diag-layout">
+        <article class="panel">
+          <label class="field"><span>Target</span><select id="diagTarget"></select></label>
+          <label class="field"><span>Diagnostic</span>
+            <select id="diagMode">
+              <option value="full">Full guided diagnostic</option>
+              <option value="ping">Reachability</option>
+              <option value="dns">DNS</option>
+              <option value="gateway">Gateway/path</option>
+              <option value="port">TCP service</option>
+              <option value="config">Configuration posture</option>
+            </select>
+          </label>
+          <label class="field"><span>Port</span><input id="diagPort" type="number" min="1" max="65535" value="443"></label>
+          <button class="btn primary wide" id="runDiagBtn">Run Diagnostic</button>
+          <div class="quick-tools">
+            <button data-quick="ping">Ping</button><button data-quick="trace">Trace</button><button data-quick="dns">DNS</button><button data-quick="arp">ARP</button>
           </div>
+        </article>
+        <article class="terminal-panel">
+          <div class="terminal-head"><span>NOC TERMINAL</span><b>SAFE MODE</b></div>
+          <pre id="diagTerminal">Select a target and run a diagnostic.</pre>
+        </article>
+      </div>
+      <div class="grid two">
+        <article class="panel">
+          <div class="panel-head"><div><span class="kicker">INTERPRETATION</span><h3>Finding</h3></div></div>
+          <div id="diagFinding" class="finding-empty">No diagnostic has been run.</div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><span class="kicker">CIDR TOOL</span><h3>Subnet calculator</h3></div></div>
+          <div class="cidr-tool"><input id="cidrInput" value="10.20.50.0/27"><button class="btn ghost" id="cidrCalcBtn">Calculate</button></div>
+          <div id="cidrOutput" class="cidr-output"></div>
+        </article>
+      </div>
+    </section>
 
-          <div class="dashboard-grid">
-            <article class="panel telemetry-panel">
-              <div class="panel-heading">
-                <div>
-                  <p class="eyebrow">Telemetry</p>
-                  <h3>Latency trend</h3>
-                </div>
-                <span class="subtle" id="latencyRangeLabel">Recent samples</span>
-              </div>
-              <canvas id="latencyChart" width="960" height="300" aria-label="Latency trend chart"></canvas>
-              <div class="chart-legend">
-                <span><i class="legend-dot good"></i>Average latency</span>
-                <span><i class="legend-dot warning"></i>Warning threshold</span>
-              </div>
-            </article>
+    <!-- DOCS -->
+    <section class="page" data-panel="docs">
+      <div class="section-head">
+        <div><span class="kicker">NETWORK DOCUMENTATION</span><h2>Documentation Studio</h2><p>Generate living network documentation directly from the unified inventory, IPAM, topology, and change history.</p></div>
+        <button class="btn ghost" id="printDocsBtn">Print Documentation</button>
+      </div>
+      <div class="doc-summary" id="docSummary"></div>
+      <div class="grid two">
+        <article class="panel">
+          <div class="panel-head"><div><span class="kicker">SITE DOCUMENT</span><h3>Logical structure</h3></div></div>
+          <div id="docTopology" class="doc-topology"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><span class="kicker">PORT MAP</span><h3>Switch / uplink mappings</h3></div></div>
+          <div id="portMappings" class="stack"></div>
+        </article>
+      </div>
+      <article class="panel">
+        <div class="panel-head">
+          <div><span class="kicker">CHANGE NOTES</span><h3>Documentation history</h3></div>
+        </div>
+        <div class="inline-form"><input id="docChangeInput" placeholder="Document a network change"><button class="btn primary" id="addDocChangeBtn">Add Note</button></div>
+        <div id="docChanges" class="timeline"></div>
+      </article>
+    </section>
 
-            <article class="panel">
-              <div class="panel-heading">
-                <div>
-                  <p class="eyebrow">Estate</p>
-                  <h3>Device status</h3>
-                </div>
-              </div>
-              <div class="donut-wrap">
-                <div class="donut" id="statusDonut"><span id="donutPercent">0%</span></div>
-                <div class="donut-legend">
-                  <div><span><i class="legend-dot good"></i>Online</span><strong id="donutOnline">0</strong></div>
-                  <div><span><i class="legend-dot danger"></i>Offline</span><strong id="donutOffline">0</strong></div>
-                  <div><span><i class="legend-dot muted-dot"></i>Unknown</span><strong id="donutUnknown">0</strong></div>
-                </div>
-              </div>
-            </article>
+    <!-- ALERTS -->
+    <section class="page" data-panel="alerts">
+      <div class="section-head">
+        <div><span class="kicker">EVENT RESPONSE</span><h2>Alerts & Incidents</h2><p>Unified monitoring alerts, IP conflicts, backup failures, capacity pressure, and infrastructure incidents.</p></div>
+      </div>
+      <div class="alert-summary" id="alertSummary"></div>
+      <article class="panel">
+        <div id="alertRows" class="alert-list"></div>
+      </article>
+    </section>
+
+    <!-- AUDIT -->
+    <section class="page" data-panel="audit">
+      <div class="section-head">
+        <div><span class="kicker">GOVERNANCE</span><h2>Unified Audit</h2><p>All network operations actions and documentation changes in one timeline.</p></div>
+      </div>
+      <div class="toolbar"><input id="auditSearch" type="search" placeholder="Search audit events..."><select id="auditModuleFilter"><option value="">All modules</option></select></div>
+      <article class="panel"><div id="auditRows" class="timeline full"></div></article>
+    </section>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop" hidden>
+  <div class="modal">
+    <div class="modal-head"><h2 id="modalTitle">Dialog</h2><button id="modalCloseBtn" class="icon-btn">×</button></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+<div class="auth-gate" id="authGate">
+  <div class="auth-shell">
+    <section class="auth-visual">
+      <div class="auth-top">
+        <span>NETOPS ENTERPRISE / NOC FABRIC</span>
+        <b><i></i> SYSTEM READY</b>
+      </div>
+      <div class="auth-network">
+        <div class="auth-core">NE</div>
+        <span class="auth-ring r1"></span>
+        <span class="auth-ring r2"></span>
+        <span class="auth-ring r3"></span>
+        <span class="auth-sat s1">NOC</span>
+        <span class="auth-sat s2">IPAM</span>
+        <span class="auth-sat s3">CFG</span>
+        <span class="auth-sat s4">MON</span>
+        <span class="auth-sat s5">DOC</span>
+        <span class="auth-sat s6">DIA</span>
+      </div>
+      <div class="auth-copy-block">
+        <p>UNIFIED NETWORK OPERATIONS</p>
+        <h2>From address space to incident response—one network fabric.</h2>
+        <div class="auth-stats">
+          <span><b>10</b> integrated modules</span>
+          <span><b>03</b> operating roles</span>
+          <span><b>01</b> shared network model</span>
+        </div>
+      </div>
+    </section>
+    <section class="auth-panel">
+      <div class="auth-card">
+        <div class="auth-card-head">
+          <div class="brand">
+            <div class="brand-symbol"><span></span><span></span><span></span><span></span></div>
+            <div><strong>NETOPS</strong><small>ENTERPRISE</small></div>
           </div>
-
-
-          <article class="panel system-health-panel">
-            <div class="panel-heading">
-              <div><p class="eyebrow">Agent host</p><h3>Infrastructure health</h3></div>
-              <span class="subtle" id="systemHostLabel">Monitoring node</span>
-            </div>
-            <div class="system-metrics">
-              <div><span>CPU</span><strong id="systemCpu">—</strong><meter id="systemCpuMeter" min="0" max="100" value="0"></meter></div>
-              <div><span>Memory</span><strong id="systemMemory">—</strong><meter id="systemMemoryMeter" min="0" max="100" value="0"></meter></div>
-              <div><span>Disk</span><strong id="systemDisk">—</strong><meter id="systemDiskMeter" min="0" max="100" value="0"></meter></div>
-              <div><span>Download</span><strong id="systemDownload">—</strong><small id="systemDownloadTotal">Total —</small></div>
-              <div><span>Upload</span><strong id="systemUpload">—</strong><small id="systemUploadTotal">Total —</small></div>
-              <div><span>Agent uptime</span><strong id="systemUptime">—</strong><small id="systemPlatform">—</small></div>
-            </div>
-          </article>
-
-          <div class="dashboard-grid secondary">
-            <article class="panel">
-              <div class="panel-heading">
-                <div>
-                  <p class="eyebrow">Attention</p>
-                  <h3>Recent alerts</h3>
-                </div>
-                <button class="link-button" data-go="alerts">View all</button>
-              </div>
-              <div class="alert-stack" id="overviewAlertList"></div>
-            </article>
-
-            <article class="panel">
-              <div class="panel-heading">
-                <div>
-                  <p class="eyebrow">Infrastructure</p>
-                  <h3>Top latency</h3>
-                </div>
-                <button class="link-button" data-go="devices">View devices</button>
-              </div>
-              <div class="rank-list" id="topLatencyList"></div>
-            </article>
-          </div>
-        </section>
-
-        <section class="page" data-page-panel="devices">
-          <div class="section-header">
-            <div>
-              <p class="eyebrow">Discovery & monitoring</p>
-              <h2>Network devices</h2>
-              <p>Track reachability, latency, identity, and exposed services across the monitored network.</p>
-            </div>
-            <div class="section-actions">
-              <button class="ghost-button" id="deviceRefreshButton">Refresh</button>
-              <button class="primary-button" id="deviceScanButton">Discover devices</button>
-            </div>
-          </div>
-
-          <article class="panel">
-            <div class="table-toolbar">
-              <div class="search-box">
-                <span>⌕</span>
-                <input id="deviceSearch" type="search" placeholder="Search IP, hostname, MAC, role, or vendor">
-              </div>
-              <select id="deviceStatusFilter" aria-label="Filter by status">
-                <option value="all">All statuses</option>
-                <option value="online">Online</option>
-                <option value="offline">Offline</option>
-                <option value="unknown">Unknown</option>
-              </select>
-              <select id="deviceRoleFilter" aria-label="Filter by role">
-                <option value="all">All roles</option>
-              </select>
-            </div>
-
-            <div class="table-wrap">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Status</th>
-                    <th>Device</th>
-                    <th>IP address</th>
-                    <th>MAC</th>
-                    <th>Role</th>
-                    <th>Latency</th>
-                    <th>Services</th>
-                    <th>Last seen</th>
-                  </tr>
-                </thead>
-                <tbody id="deviceTableBody"></tbody>
-              </table>
-            </div>
-          </article>
-        </section>
-
-
-        <section class="page" data-page-panel="topology">
-          <div class="section-header">
-            <div>
-              <p class="eyebrow">Network visualization</p>
-              <h2>Topology</h2>
-              <p>An operational view of discovered infrastructure, grouped around the monitored gateway and network services.</p>
-            </div>
-            <button class="ghost-button" id="topologyRefreshButton">Refresh topology</button>
-          </div>
-
-          <div class="topology-layout">
-            <article class="panel topology-panel">
-              <div class="panel-heading">
-                <div><p class="eyebrow">Live estate</p><h3>Network map</h3></div>
-                <span class="subtle" id="topologySubnet">—</span>
-              </div>
-              <div class="topology-canvas" id="topologyCanvas"></div>
-            </article>
-
-            <article class="panel">
-              <div class="panel-heading"><div><p class="eyebrow">Summary</p><h3>Topology insights</h3></div></div>
-              <div class="topology-summary" id="topologySummary"></div>
-            </article>
-          </div>
-        </section>
-
-        <section class="page" data-page-panel="alerts">
-          <div class="section-header">
-            <div>
-              <p class="eyebrow">Operations awareness</p>
-              <h2>Alerts</h2>
-              <p>Availability, latency, and service events detected by the monitoring agent.</p>
-            </div>
-            <button class="ghost-button" id="alertsRefreshButton">Refresh alerts</button>
-          </div>
-
-          <div class="alert-summary-grid">
-            <article class="mini-stat critical"><span>Critical</span><strong id="criticalAlertCount">0</strong></article>
-            <article class="mini-stat warning"><span>Warning</span><strong id="warningAlertCount">0</strong></article>
-            <article class="mini-stat info"><span>Informational</span><strong id="infoAlertCount">0</strong></article>
-            <article class="mini-stat resolved"><span>Resolved</span><strong id="resolvedAlertCount">0</strong></article>
-          </div>
-
-          <article class="panel">
-            <div class="table-toolbar">
-              <div class="search-box">
-                <span>⌕</span>
-                <input id="alertSearch" type="search" placeholder="Search alert, device, or IP">
-              </div>
-              <select id="alertSeverityFilter">
-                <option value="all">All severities</option>
-                <option value="critical">Critical</option>
-                <option value="warning">Warning</option>
-                <option value="info">Info</option>
-              </select>
-              <select id="alertStateFilter">
-                <option value="active">Active alerts</option>
-                <option value="all">All alerts</option>
-                <option value="resolved">Resolved</option>
-              </select>
-            </div>
-            <div class="alert-feed" id="alertFeed"></div>
-          </article>
-        </section>
-
-        <section class="page" data-page-panel="tools">
-          <div class="section-header">
-            <div>
-              <p class="eyebrow">Troubleshooting toolkit</p>
-              <h2>Diagnostics</h2>
-              <p>Run common infrastructure checks from one operational console.</p>
-            </div>
-          </div>
-
-          <div class="tool-grid">
-            <article class="panel tool-card">
-              <div class="tool-icon">↔</div>
-              <h3>Ping test</h3>
-              <p>Measure host reachability, round-trip latency, and packet loss.</p>
-              <form id="pingForm" class="tool-form">
-                <input id="pingHost" required placeholder="8.8.8.8 or host.local">
-                <button class="primary-button" type="submit">Run ping</button>
-              </form>
-              <pre class="tool-output" id="pingOutput">Ready.</pre>
-            </article>
-
-            <article class="panel tool-card">
-              <div class="tool-icon">DNS</div>
-              <h3>DNS lookup</h3>
-              <p>Resolve hostnames and inspect returned IPv4/IPv6 addresses.</p>
-              <form id="dnsForm" class="tool-form">
-                <input id="dnsHost" required placeholder="example.com">
-                <button class="primary-button" type="submit">Resolve</button>
-              </form>
-              <pre class="tool-output" id="dnsOutput">Ready.</pre>
-            </article>
-
-            <article class="panel tool-card">
-              <div class="tool-icon">:</div>
-              <h3>TCP port test</h3>
-              <p>Check whether a specific TCP service is reachable from the agent.</p>
-              <form id="portForm" class="tool-form two-input">
-                <input id="portHost" required placeholder="192.168.1.1">
-                <input id="portNumber" required type="number" min="1" max="65535" value="443">
-                <button class="primary-button" type="submit">Test port</button>
-              </form>
-              <pre class="tool-output" id="portOutput">Ready.</pre>
-            </article>
-
-            <article class="panel tool-card">
-              <div class="tool-icon">/</div>
-              <h3>Subnet calculator</h3>
-              <p>Calculate network, broadcast, usable range, and host capacity.</p>
-              <form id="subnetForm" class="tool-form">
-                <input id="subnetInput" required value="192.168.1.0/24" placeholder="192.168.1.0/24">
-                <button class="primary-button" type="submit">Calculate</button>
-              </form>
-              <pre class="tool-output" id="subnetOutput">Ready.</pre>
-            </article>
-
-            <article class="panel tool-card">
-              <div class="tool-icon">TR</div>
-              <h3>Traceroute</h3>
-              <p>Trace the routed path toward a host and identify intermediate hops.</p>
-              <form id="tracerouteForm" class="tool-form">
-                <input id="tracerouteHost" required placeholder="8.8.8.8 or example.com">
-                <button class="primary-button" type="submit">Trace route</button>
-              </form>
-              <pre class="tool-output" id="tracerouteOutput">Ready.</pre>
-            </article>
-
-            <article class="panel tool-card">
-              <div class="tool-icon">RT</div>
-              <h3>Route table</h3>
-              <p>Inspect the monitoring node's active routing table and interfaces.</p>
-              <div class="tool-form">
-                <button class="primary-button" id="routeTableButton" type="button">Load routes & interfaces</button>
-              </div>
-              <pre class="tool-output" id="routeTableOutput">Ready.</pre>
-            </article>
-          </div>
-        </section>
-
-        <section class="page" data-page-panel="inventory">
-          <div class="section-header">
-            <div>
-              <p class="eyebrow">Asset visibility</p>
-              <h2>Infrastructure inventory</h2>
-              <p>Operational inventory grouped by device role and network function.</p>
-            </div>
-            <button class="ghost-button" id="exportInventoryButton">Export CSV</button>
-          </div>
-
-          <div class="inventory-summary" id="inventorySummary"></div>
-
-          <article class="panel">
-            <div class="table-wrap">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Hostname</th>
-                    <th>IP</th>
-                    <th>MAC</th>
-                    <th>Vendor</th>
-                    <th>Role</th>
-                    <th>OS / Platform</th>
-                    <th>Services</th>
-                    <th>Monitoring</th>
-                  </tr>
-                </thead>
-                <tbody id="inventoryTableBody"></tbody>
-              </table>
-            </div>
-          </article>
-        </section>
-
-
-        <section class="page" data-page-panel="settings">
-          <div class="section-header">
-            <div>
-              <p class="eyebrow">Monitoring policy</p>
-              <h2>Agent settings</h2>
-              <p>Configure the authorized subnet, polling cadence, alert thresholds, and service checks used by the local monitoring agent.</p>
-            </div>
-          </div>
-
-          <div class="settings-layout">
-            <article class="panel">
-              <div class="panel-heading"><div><p class="eyebrow">Discovery</p><h3>Network scope</h3></div></div>
-              <div class="config-grid">
-                <label class="field-stack"><span>Monitored subnet</span><input id="configSubnet" placeholder="auto or 192.168.1.0/24"></label>
-                <label class="field-stack"><span>Monitor interval (seconds)</span><input id="configInterval" type="number" min="5" max="3600"></label>
-                <label class="field-stack"><span>Scan timeout (ms)</span><input id="configTimeout" type="number" min="150" max="5000"></label>
-                <label class="field-stack"><span>Maximum scan hosts</span><input id="configMaxHosts" type="number" min="1" max="4096"></label>
-              </div>
-            </article>
-
-            <article class="panel">
-              <div class="panel-heading"><div><p class="eyebrow">Alerting</p><h3>Operational thresholds</h3></div></div>
-              <div class="config-grid">
-                <label class="field-stack"><span>Latency warning (ms)</span><input id="configLatency" type="number" min="1" max="10000"></label>
-                <label class="field-stack"><span>Packet-loss warning (%)</span><input id="configLoss" type="number" min="0" max="100"></label>
-                <label class="field-stack config-wide"><span>TCP service ports</span><input id="configPorts" placeholder="22, 53, 80, 443, 445, 3389"></label>
-              </div>
-            </article>
-          </div>
-
-          <article class="panel settings-save-panel">
-            <div>
-              <strong>Apply monitoring configuration</strong>
-              <p class="subtle" id="settingsModeNote">Changes affect the live agent only.</p>
-            </div>
-            <button class="primary-button" id="saveSettingsButton" type="button">Save settings</button>
-          </article>
-        </section>
-
-        <section class="page" data-page-panel="about">
-          <div class="section-header">
-            <div>
-              <p class="eyebrow">Project architecture</p>
-              <h2>About NetOps Command Center</h2>
-              <p>A practical network operations portfolio project built around visibility, monitoring, troubleshooting, and infrastructure support.</p>
-            </div>
-          </div>
-
-          <div class="about-grid">
-            <article class="panel architecture-card">
-              <p class="eyebrow">Deployment model</p>
-              <h3>Persistent browser workspace + local agent</h3>
-              <div class="architecture-flow">
-                <div><strong>Browser dashboard</strong><span>Public portfolio deployment</span></div>
-                <b>↔</b>
-                <div><strong>NetOps Agent</strong><span>Runs inside the monitored LAN</span></div>
-                <b>↔</b>
-                <div><strong>Network estate</strong><span>Endpoints & infrastructure</span></div>
-              </div>
-              <p class="subtle">The browser workspace saves edits locally. Real scanning and diagnostics are performed only by the local agent on the network where it is installed.</p>
-            </article>
-
-            <article class="panel">
-              <p class="eyebrow">Skills demonstrated</p>
-              <h3>Infrastructure + development</h3>
-              <div class="skill-tags">
-                <span>Network Monitoring</span><span>ICMP</span><span>TCP/IP</span><span>ARP</span>
-                <span>DNS</span><span>Subnetting</span><span>Python</span><span>FastAPI</span>
-                <span>SQLite</span><span>JavaScript</span><span>REST APIs</span><span>IT Operations</span>
-              </div>
-            </article>
-
-            <article class="panel">
-              <p class="eyebrow">Operational focus</p>
-              <h3>Designed for real IT workflows</h3>
-              <ul class="feature-list">
-                <li>Identify offline and high-latency devices quickly.</li>
-                <li>Maintain a lightweight infrastructure inventory.</li>
-                <li>Run first-line troubleshooting from one console.</li>
-                <li>Keep historical samples and alert records locally.</li>
-                <li>Separate the persistent browser workspace from private network access.</li>
-              </ul>
-            </article>
-          </div>
-        </section>
-      </main>
+          <span class="cloud-chip">CLOUD READY</span>
+        </div>
+        <p class="auth-eyebrow">Supabase-backed network workspace</p>
+        <h2>Choose your operating mode.</h2>
+        <p class="auth-intro">Sign in for persistent cloud state and role-based access, or launch the full portfolio demo with browser-local network data.</p>
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-auth-tab="signin">Sign In</button>
+          <button class="auth-tab" data-auth-tab="signup">Create Account</button>
+        </div>
+        <form id="signInForm" class="auth-form">
+          <label class="field"><span>Email</span><input id="authEmail" type="email" autocomplete="email" required placeholder="engineer@company.com"></label>
+          <label class="field"><span>Password</span><input id="authPassword" type="password" autocomplete="current-password" minlength="6" required placeholder="••••••••"></label>
+          <button class="btn primary wide" type="submit">Connect Cloud Workspace</button>
+        </form>
+        <form id="signUpForm" class="auth-form" hidden>
+          <label class="field"><span>Display name</span><input id="authDisplayName" autocomplete="name" required placeholder="Network Engineer"></label>
+          <label class="field"><span>Email</span><input id="authSignupEmail" type="email" autocomplete="email" required placeholder="engineer@company.com"></label>
+          <label class="field"><span>Password</span><input id="authSignupPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="8+ characters"></label>
+          <button class="btn primary wide" type="submit">Create Cloud Workspace</button>
+        </form>
+        <div id="authMessage" class="auth-message">Cloud data is protected with Supabase Auth, RLS, and network-role access controls.</div>
+        <div class="auth-divider"><span>OR</span></div>
+        <button class="btn demo wide" id="continueDemoBtn">Launch Portfolio Demo</button>
+        <p class="auth-footnote">Demo Mode never touches external network infrastructure.</p>
+      </div>
     </section>
   </div>
+</div>
 
-  <dialog class="connection-dialog" id="connectionDialog">
-    <form method="dialog" class="dialog-card" id="connectionForm">
-      <div class="dialog-heading">
-        <div>
-          <p class="eyebrow">Data source</p>
-          <h2>Connection settings</h2>
-        </div>
-        <button class="icon-button" value="cancel" aria-label="Close">×</button>
-      </div>
-
-      <label class="radio-card">
-        <input type="radio" name="mode" value="demo" checked>
-        <span>
-          <strong>Browser workspace</strong>
-          <small>Use built-in representative network telemetry.</small>
-        </span>
-      </label>
-
-      <label class="radio-card">
-        <input type="radio" name="mode" value="live">
-        <span>
-          <strong>Live agent mode</strong>
-          <small>Connect to a locally running NetOps Agent.</small>
-        </span>
-      </label>
-
-      <label class="field-stack">
-        <span>Agent URL</span>
-        <input id="agentUrlInput" type="url" value="http://127.0.0.1:8787" placeholder="http://127.0.0.1:8787">
-      </label>
-
-      <div class="dialog-note">
-        For live monitoring, run <code>python agent/netops_agent.py</code> inside the network you are authorized to monitor.
-      </div>
-
-      <div class="dialog-actions">
-        <button class="ghost-button" value="cancel">Cancel</button>
-        <button class="primary-button" id="saveConnectionButton" value="default">Save connection</button>
-      </div>
-    </form>
-  </dialog>
-
-
-  <dialog class="connection-dialog device-dialog" id="deviceDialog">
-    <form method="dialog" class="dialog-card device-dialog-card" id="deviceForm">
-      <div class="dialog-heading">
-        <div>
-          <p class="eyebrow">Device details</p>
-          <h2 id="deviceDialogTitle">Device</h2>
-        </div>
-        <button class="icon-button" value="cancel" aria-label="Close">×</button>
-      </div>
-
-      <div class="device-detail-grid">
-        <div><span>Status</span><strong id="detailStatus">—</strong></div>
-        <div><span>IP address</span><strong id="detailIp">—</strong></div>
-        <div><span>Latency</span><strong id="detailLatency">—</strong></div>
-        <div><span>24h availability</span><strong id="detailAvailability">—</strong></div>
-        <div><span>First seen</span><strong id="detailFirstSeen">—</strong></div>
-        <div><span>Last seen</span><strong id="detailLastSeen">—</strong></div>
-      </div>
-
-      <canvas id="deviceHistoryChart" width="900" height="220" aria-label="Device latency history"></canvas>
-
-      <div class="device-edit-grid">
-        <label class="field-stack"><span>Hostname</span><input id="detailHostname"></label>
-        <label class="field-stack"><span>Vendor</span><input id="detailVendor"></label>
-        <label class="field-stack"><span>Role</span><input id="detailRole"></label>
-        <label class="field-stack"><span>Platform</span><input id="detailPlatform"></label>
-      </div>
-
-      <div class="dialog-note" id="detailServices">Services: —</div>
-      <div class="dialog-actions">
-        <button class="ghost-button" value="cancel">Close</button>
-        <button class="primary-button" id="saveDeviceButton" value="default">Save metadata</button>
-      </div>
-    </form>
-  </dialog>
-
-  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+<div class="toast-region" id="toastRegion"></div>
 </body>
 </html>

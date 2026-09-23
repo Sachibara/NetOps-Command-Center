@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install agent dependencies
+      - name: Install backend dependencies
         run: python -m pip install -r agent/requirements.txt
 
       - name: Check Python syntax
@@ -45,12 +45,13 @@ jobs:
           print("NetOps agent smoke test passed")
           PY
 
+
       - name: Check browser JavaScript syntax
         run: |
           node --check app.js
-          node --check demo-data.js
+          node --check cloud.js
 
-      - name: Validate HTML wiring
+      - name: Validate HTML and runtime-modal wiring
         run: |
           python - <<'PY'
           import re
@@ -58,17 +59,21 @@ jobs:
 
           html = Path("index.html").read_text(encoding="utf-8")
           js = Path("app.js").read_text(encoding="utf-8")
-          ids = set(re.findall(r'id="([^"]+)"', html))
-          js_ids = set(re.findall(r'\$\("([^"]+)"\)', js))
-          missing = sorted(js_ids - ids)
-          assert not missing, f"Missing DOM ids: {missing}"
-          assert 'href="./styles.css"' in html
-          assert 'src="./app.js"' in html
-          assert 'src="./demo-data.js"' in html
+
+          # Static DOM ids plus ids declared inside JS-generated modal markup.
+          defined_ids = set(re.findall(r'id="([^"]+)"', html + "\n" + js))
+          referenced_ids = set(re.findall(r'\$\("([^"]+)"\)', js))
+          missing = sorted(referenced_ids - defined_ids)
+          assert not missing, f"DOM ids referenced but never defined: {missing}"
+
+          assert 'href="./styles.css' in html
+          assert 'src="./cloud.js' in html
+          assert 'src="./app.js' in html
+          assert "supabase-js@2.117.0" in html
           print("HTML/JS wiring test passed")
           PY
 
-      - name: Validate JSON
+      - name: Validate deployment JSON
         run: |
           python -m json.tool vercel.json > /dev/null
           python -m json.tool agent/agent_config.example.json > /dev/null

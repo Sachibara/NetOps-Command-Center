@@ -1,294 +1,161 @@
-# NetOps Command Center
-
-A portfolio-grade **Network Operations & Infrastructure Monitoring platform** built for IT Service Desk, IT Help Desk, NOC, Network Engineering, System Administration, and IT Infrastructure roles.
-
-NetOps Command Center deliberately separates the public portfolio experience from private-network access:
-
-- **Browser Workspace Mode** — the deployed dashboard is directly usable and stores workspace changes in the browser while using safe seeded telemetry.
-- **Live Agent Mode** — a Python monitoring agent runs inside an authorized LAN and provides real discovery, availability, latency, service, alert, and troubleshooting data.
-
-The cloud-hosted dashboard does **not** pretend it can scan a private network.
-
-
-## Public App
-
-**Live app:** https://sachibara.github.io/NetOps-Command-Center/
-
-## Highlights
-
-- Network-health dashboard
-- Agent host CPU, memory, disk, uptime, and bandwidth telemetry
-- Device discovery across a configured IPv4 subnet
-- ICMP reachability monitoring
-- Round-trip latency and packet-loss tracking
-- Lightweight TCP service discovery
-- Device inventory and CSV export
-- Device-detail view with 24-hour availability and latency history
-- Editable device hostname/vendor/role/platform metadata
-- Inferred network topology visualization
-- Offline-device alerts
-- High-latency alerts
-- Packet-loss alerts
-- Historical SQLite monitoring samples
-- Search and filtering
-- Ping diagnostic tool
-- DNS lookup tool
-- TCP port connectivity test
-- Traceroute
-- Route-table and interface inspection
-- IPv4 subnet calculator
-- In-dashboard monitoring settings
-- Responsive browser interface
-- REST API through FastAPI
-- Background monitoring worker
-- Browser-workspace/live-agent data-source switching
-- GitHub Actions syntax validation
-- Automated static deployment workflow
-
-## Architecture
-
-```text
-Public Portfolio
-┌─────────────────────────────────┐
-│ Browser Dashboard               │
-│ GitHub Pages / static hosting   │
-│ Persistent browser workspace   │
-└─────────────────────────────────┘
-
-
-Authorized LAN / Lab
-┌─────────────────────────────────┐
-│ Browser Dashboard               │
-│ http://127.0.0.1:8787           │
-└───────────────┬─────────────────┘
-                │ REST API
-                ▼
-┌─────────────────────────────────┐
-│ NetOps Agent                    │
-│ Python + FastAPI                │
-│ SQLite monitoring history       │
-└───────────────┬─────────────────┘
-                │
-        ICMP / DNS / TCP / ARP
-                │
-                ▼
-┌─────────────────────────────────┐
-│ Routers · Switches · Servers    │
-│ APs · Workstations · Printers   │
-└─────────────────────────────────┘
-```
-
-## Repository Structure
-
-```text
-NetOps-Command-Center/
-├── index.html
-├── styles.css
-├── app.js
-├── demo-data.js
-├── vercel.json
-├── agent/
-│   ├── netops_agent.py
-│   ├── requirements.txt
-│   ├── run_agent.bat
-│   ├── agent_config.example.json
-│   └── data/
-├── .github/
-│   └── workflows/
-│       ├── ci.yml
-│       └── pages.yml
-└── README.md
-```
+# NetOps Enterprise — Unified Network Operations Platform
+
+This branch is the active unification workbench for the next flagship network product.
+
+## Systems unified
+
+NetOps Enterprise combines the strongest workflows from:
+
+1. NetOps Command Center
+2. Network Troubleshooting Toolkit
+3. IPAM + Subnet Manager
+4. Network Config Backup Manager
+5. Network Documentation Generator
+6. Infrastructure Health Monitor
+
+The standalone portfolio projects remain unchanged.
+
+## Shared network model
+
+The unified relationship is:
+
+Site → Device → IP / VLAN / Subnet → Telemetry / Services → Configuration → Troubleshooting → Documentation → Alerts / Audit
+
+A single device record is reused across all modules rather than duplicated per tool.
+
+## Current modules
+
+### Command Center
+- fleet health score
+- operational radar
+- device / alert / subnet / config / service KPIs
+- latency telemetry chart
+- subnet-capacity pressure
+- site distribution
+- backup posture
+- attention queue
+- unified activity feed
+
+### Topology
+- generated logical topology
+- site filtering
+- role filtering
+- online / warning / offline / maintenance states
+- direct device drill-down
+- shared topology links
+
+### Devices
+- hostname / IP / MAC / vendor / role / platform
+- site and status
+- latency / loss / availability
+- resource telemetry
+- configuration-management state
+- cross-module navigation
+
+### Infrastructure Health
+- CPU / memory / disk health
+- host monitoring
+- service health
+- response time
+- uptime context
+- telemetry collection simulation
+
+### IPAM & Subnet Manager
+- subnet utilization
+- VLAN plan
+- address records
+- conflict detection
+- capacity alerts
+- CIDR planner
+- shared inventory correlation
+
+### Config Backup Manager
+- managed network devices
+- versioned backups
+- change detection
+- latest backup posture
+- version comparison / diff
+- simulated backup cycle
+- retention / schedule metadata
+
+### Troubleshooting
+- reachability
+- path / gateway
+- DNS
+- TCP service checks
+- configuration posture
+- full guided diagnostic
+- interpreted findings
+- related-alert context
+- CIDR calculator
+
+### Documentation
+- site/device living documentation
+- port mappings
+- network structure
+- change notes
+- printable documentation
+
+### Alerts & Incidents
+- health alerts
+- service degradation
+- config-backup failures
+- IP conflicts
+- subnet-capacity pressure
+- acknowledgement workflow
 
-## Public Browser Workspace
+### Unified Audit
+- monitoring events
+- IPAM actions
+- configuration actions
+- troubleshooting results
+- documentation changes
+- system import/export activity
 
-The root application is a static site. Browser Workspace Mode is selected automatically on public hosting and persists editable workspace state in local browser storage.
+## Persistence
 
-The initial workspace represents a small business network containing routers, switches, servers, wireless access points, endpoints, printers, an NVR, and a managed UPS. Device metadata and workspace settings can then be edited and retained in the browser.
+Current unification build uses browser `localStorage` under:
 
-No private network data is uploaded by the repository.
+`netops_enterprise_v1`
 
-## Live Agent Setup
+This is intentional for the first integration phase. The next phase will replace browser-only persistence with a backend/database adapter while retaining the shared model.
 
-### 1. Clone the repository
+## Safety boundary
 
-```powershell
-git clone https://github.com/Sachibara/NetOps-Command-Center.git
-cd NetOps-Command-Center
-```
+The portfolio build does not:
 
-### 2. Install dependencies
+- scan arbitrary external networks
+- execute arbitrary remote commands
+- access production network devices
+- store real network credentials
+- restore configuration directly to real equipment
 
-```powershell
-python -m pip install -r agent/requirements.txt
-```
+Discovery, probes, backups, and restore workflows remain safely simulated until an authorized agent/backend is connected.
 
-Or on Windows, run:
+## Branch strategy
 
-```text
-agent\run_agent.bat
-```
+- `main` — public portfolio and existing standalone systems
+- `netops-enterprise-unification` — active unified network platform development
 
-### 3. Open the live dashboard
 
-```text
-http://127.0.0.1:8787
-```
+## Cloud workspace
 
-When opened from port `8787`, the dashboard automatically selects Live Agent Mode.
+NetOps Enterprise supports two operating modes:
 
-## Agent Configuration
+- **Cloud Workspace** — Supabase Auth, persistent workspace state, RLS-protected data, server-side audit history, and role-based access.
+- **Portfolio Demo** — no account required; all data remains browser-local and no external network infrastructure is contacted.
 
-Copy:
+Cloud tables:
 
-```text
-agent/agent_config.example.json
-```
+- `netops_profiles`
+- `netops_workspaces`
+- `netops_memberships`
+- `netops_audit_events`
 
-to:
+Roles:
 
-```text
-agent/agent_config.json
-```
+- `admin`
+- `engineer`
+- `viewer`
 
-Example:
-
-```json
-{
-  "subnet": "192.168.1.0/24",
-  "monitor_interval_seconds": 30,
-  "warning_latency_ms": 100,
-  "warning_packet_loss_percent": 20,
-  "scan_timeout_ms": 550,
-  "max_scan_hosts": 256,
-  "service_ports": [22, 53, 80, 443, 445, 3389, 9100]
-}
-```
-
-When `subnet` is set to `"auto"`, the agent derives a /24 network from the host's active IPv4 address.
-
-For safety, discovery is limited to the configured subnet and to a maximum number of hosts per scan.
-
-## Environment Variables
-
-Optional runtime overrides:
-
-```text
-NETOPS_BIND=127.0.0.1
-NETOPS_PORT=8787
-NETOPS_SUBNET=192.168.1.0/24
-NETOPS_MONITOR_INTERVAL=30
-NETOPS_ALLOWED_ORIGINS=https://your-dashboard.example
-```
-
-The agent binds to `127.0.0.1` by default.
-
-## API
-
-Selected endpoints:
-
-```text
-GET  /api/health
-GET  /api/dashboard
-GET  /api/system
-GET  /api/network
-GET  /api/config
-PUT  /api/config
-GET  /api/devices/{ip}
-PUT  /api/devices/{ip}
-POST /api/scan
-POST /api/tools/ping
-POST /api/tools/dns
-POST /api/tools/port
-POST /api/tools/traceroute
-```
-
-Example health check:
-
-```powershell
-Invoke-RestMethod http://127.0.0.1:8787/api/health
-```
-
-## Data Storage
-
-Live monitoring information is kept locally in:
-
-```text
-agent/data/netops.db
-```
-
-The runtime database is excluded from Git through `.gitignore`.
-
-Stored data includes:
-
-- device inventory and editable metadata
-- monitoring samples and 24-hour availability
-- agent host resource/network samples
-- active/resolved alerts
-- timestamps and availability state
-
-Historical samples are automatically bounded to prevent unlimited database growth.
-
-## Security & Scope
-
-NetOps Command Center is intended for **networks you own or are explicitly authorized to administer**.
-
-The local agent:
-
-- binds to localhost by default
-- validates diagnostic host input
-- limits discovery to IPv4
-- limits the maximum number of scanned hosts
-- avoids shell-based command construction
-- keeps operational telemetry local
-- requires explicit configuration before broader network access
-
-## Technology Stack
-
-**Frontend**
-
-- HTML5
-- CSS3
-- Vanilla JavaScript
-- Canvas telemetry visualization
-
-**Agent / Backend**
-
-- Python
-- FastAPI
-- Uvicorn
-- SQLite
-- ICMP/ping
-- ARP table discovery
-- TCP sockets
-- DNS resolution
-- background worker threads
-
-**DevOps**
-
-- GitHub
-- GitHub Actions
-- GitHub Pages workflow
-- Vercel-compatible static configuration
-
-## Portfolio Value
-
-This project demonstrates practical skills relevant to:
-
-- IT Service Desk
-- IT Help Desk
-- Network Operations Center
-- Network Engineer
-- IT Infrastructure Engineer
-- Junior System Administrator
-- Technical Support Engineer
-- Full-Stack / Backend Development
-- Infrastructure Automation
-
-It combines networking fundamentals with application development rather than presenting networking as a collection of isolated scripts.
-
-## Developer
-
-**Jim Rodmark Camus**  
-BSIT — Network Technology  
-GitHub: [@Sachibara](https://github.com/Sachibara)
+The public frontend uses only the Supabase publishable key. No service-role or secret key is exposed.

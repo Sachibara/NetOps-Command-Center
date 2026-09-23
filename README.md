@@ -9,6 +9,11 @@ NetOps Command Center deliberately separates the public portfolio experience fro
 
 The cloud-hosted dashboard does **not** pretend it can scan a private network.
 
+
+## Public App
+
+**Live app:** https://sachibara.github.io/NetOps-Command-Center/
+
 ## Highlights
 
 - Network-health dashboard

@@ -1,161 +1,63 @@
 # NetOps Enterprise — Unified Network Operations Platform
 
-This branch is the active unification workbench for the next flagship network product.
+**Canonical network-operations flagship for the Sachibara portfolio.**
 
-## Systems unified
+NetOps Enterprise consolidates the strongest network/infrastructure work from:
 
-NetOps Enterprise combines the strongest workflows from:
+- NetOps Command Center
+- Network Troubleshooting Toolkit
+- IPAM + Subnet Manager
+- Network Config Backup Manager
+- Network Documentation Generator
+- Infrastructure Health Monitor
 
-1. NetOps Command Center
-2. Network Troubleshooting Toolkit
-3. IPAM + Subnet Manager
-4. Network Config Backup Manager
-5. Network Documentation Generator
-6. Infrastructure Health Monitor
+## Unified model
 
-The standalone portfolio projects remain unchanged.
+`Site → Device → IP/VLAN/Subnet → Telemetry/Services → Configuration → Troubleshooting → Documentation → Alerts/Audit`
 
-## Shared network model
+The browser product uses one shared device/network model across all modules instead of duplicating records per tool.
 
-The unified relationship is:
+## Modules
 
-Site → Device → IP / VLAN / Subnet → Telemetry / Services → Configuration → Troubleshooting → Documentation → Alerts / Audit
+- Command Center
+- Topology
+- Device inventory
+- Infrastructure Health
+- IPAM & Subnet Manager
+- Config Backup Manager
+- Troubleshooting
+- Network Documentation
+- Alerts & Incidents
+- Unified Audit
 
-A single device record is reused across all modules rather than duplicated per tool.
+## Modes
 
-## Current modules
+### Portfolio Demo
+Safe browser-local workspace for recruiter evaluation. It does not scan arbitrary networks, connect to production equipment, or store real network credentials.
 
-### Command Center
-- fleet health score
-- operational radar
-- device / alert / subnet / config / service KPIs
-- latency telemetry chart
-- subnet-capacity pressure
-- site distribution
-- backup posture
-- attention queue
-- unified activity feed
+### Cloud Workspace
+Supabase Auth + RLS-protected workspace persistence. The frontend uses a Supabase publishable key only; no service-role/secret key is shipped to the browser.
 
-### Topology
-- generated logical topology
-- site filtering
-- role filtering
-- online / warning / offline / maintenance states
-- direct device drill-down
-- shared topology links
+### Local Agent
+The repository retains the original `agent/` implementation from NetOps Command Center for authorized LAN monitoring and diagnostics. It binds locally by default and is intended only for networks you own or are authorized to administer.
 
-### Devices
-- hostname / IP / MAC / vendor / role / platform
-- site and status
-- latency / loss / availability
-- resource telemetry
-- configuration-management state
-- cross-module navigation
+## Security principles
 
-### Infrastructure Health
-- CPU / memory / disk health
-- host monitoring
-- service health
-- response time
-- uptime context
-- telemetry collection simulation
+- localhost-first operational agent
+- explicit/authorized network scope
+- no arbitrary remote command execution
+- publishable Supabase key only in the browser
+- RLS-backed cloud workspace
+- no production credentials in the public demo
+- CSP and browser security headers in deployment config
+- pinned Supabase JS client version
 
-### IPAM & Subnet Manager
-- subnet utilization
-- VLAN plan
-- address records
-- conflict detection
-- capacity alerts
-- CIDR planner
-- shared inventory correlation
+## Stack
 
-### Config Backup Manager
-- managed network devices
-- versioned backups
-- change detection
-- latest backup posture
-- version comparison / diff
-- simulated backup cycle
-- retention / schedule metadata
+HTML5 · CSS3 · JavaScript · Python · FastAPI · SQLite · Supabase · ICMP/DNS/TCP/ARP diagnostics
 
-### Troubleshooting
-- reachability
-- path / gateway
-- DNS
-- TCP service checks
-- configuration posture
-- full guided diagnostic
-- interpreted findings
-- related-alert context
-- CIDR calculator
+## Developer
 
-### Documentation
-- site/device living documentation
-- port mappings
-- network structure
-- change notes
-- printable documentation
-
-### Alerts & Incidents
-- health alerts
-- service degradation
-- config-backup failures
-- IP conflicts
-- subnet-capacity pressure
-- acknowledgement workflow
-
-### Unified Audit
-- monitoring events
-- IPAM actions
-- configuration actions
-- troubleshooting results
-- documentation changes
-- system import/export activity
-
-## Persistence
-
-Current unification build uses browser `localStorage` under:
-
-`netops_enterprise_v1`
-
-This is intentional for the first integration phase. The next phase will replace browser-only persistence with a backend/database adapter while retaining the shared model.
-
-## Safety boundary
-
-The portfolio build does not:
-
-- scan arbitrary external networks
-- execute arbitrary remote commands
-- access production network devices
-- store real network credentials
-- restore configuration directly to real equipment
-
-Discovery, probes, backups, and restore workflows remain safely simulated until an authorized agent/backend is connected.
-
-## Branch strategy
-
-- `main` — public portfolio and existing standalone systems
-- `netops-enterprise-unification` — active unified network platform development
-
-
-## Cloud workspace
-
-NetOps Enterprise supports two operating modes:
-
-- **Cloud Workspace** — Supabase Auth, persistent workspace state, RLS-protected data, server-side audit history, and role-based access.
-- **Portfolio Demo** — no account required; all data remains browser-local and no external network infrastructure is contacted.
-
-Cloud tables:
-
-- `netops_profiles`
-- `netops_workspaces`
-- `netops_memberships`
-- `netops_audit_events`
-
-Roles:
-
-- `admin`
-- `engineer`
-- `viewer`
-
-The public frontend uses only the Supabase publishable key. No service-role or secret key is exposed.
+**Jim Rodmark Camus**  
+BSIT — Network Technology  
+GitHub: [@Sachibara](https://github.com/Sachibara)

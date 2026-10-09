@@ -2,6 +2,10 @@
 
 **Canonical network-operations flagship for the Sachibara portfolio.**
 
+**Live demo:** https://netops-enterprise.vercel.app/
+
+**Portfolio:** https://jimcamus.vercel.app/
+
 NetOps Enterprise consolidates the strongest network/infrastructure work from:
 
 - NetOps Command Center

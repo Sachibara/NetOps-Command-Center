@@ -2,7 +2,7 @@
    Kept separate from application logic so it can never affect data handling. */
 (() => {
   "use strict";
-  const KEY = "camus-theme";
+  const KEY = "netops-theme";
   const root = document.documentElement;
 
   function readTheme() {
@@ -12,7 +12,7 @@
     if (theme === "light") root.setAttribute("data-theme", "light");
     else root.removeAttribute("data-theme");
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", theme === "light" ? "#f2eee6" : "#0b0d11");
+    if (meta) meta.setAttribute("content", theme === "light" ? "#eef5f8" : "#07121d");
     document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
       const light = theme === "light";
       button.setAttribute("aria-pressed", String(light));

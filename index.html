@@ -3,31 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#02070d">
+  <meta name="theme-color" content="#0b0d11">
   <meta name="description" content="NetOps Enterprise unified network operations platform: NOC monitoring, topology, IPAM, configuration backups, troubleshooting, documentation, alerts, and audit.">
   <title>NetOps Enterprise | Unified Network Operations</title>
-  <link rel="stylesheet" href="./styles.css?v=20260924-noc-console">
+  <link rel="preload" href="./assets/fonts/dm-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./assets/fonts/barlow-condensed-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./styles.css?v=20261114-camus-system">
+  <script src="./ui.js?v=20261114"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.0"></script>
   <script src="./cloud.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
 <body>
 <div class="shell">
-  <aside class="rail">
+  <aside class="rail" id="primaryNav" data-nav-drawer aria-label="Primary">
     <div class="brand">
       <div class="brand-symbol">
         <span></span><span></span><span></span><span></span>
       </div>
       <div>
-        <strong>NETOPS // NOC</strong>
-        <small>NETWORK OPERATIONS CONSOLE</small>
+        <strong>NET<em>OPS</em></strong>
+        <small>Network operations console</small>
       </div>
     </div>
 
     <div class="rail-state">
       <span class="pulse"></span>
       <div>
-        <b>NOC CONSOLE ONLINE</b>
+        <b>NOC console online</b>
         <small>Unified demo workspace</small>
       </div>
     </div>
@@ -55,6 +58,7 @@
   <main class="main">
     <header class="topbar">
       <div class="page-title">
+        <button class="btn ghost icon-only menu-toggle" type="button" data-nav-toggle aria-controls="primaryNav" aria-expanded="false" aria-label="Open navigation">☰</button>
         <span id="pageCode">NOC / 01</span>
         <div>
           <p id="pageEyebrow">Live network command console</p>
@@ -69,6 +73,7 @@
         </div>
         <button class="btn ghost" id="exportBtn">Export Workspace</button>
         <label class="btn ghost file-label">Import<input id="importInput" type="file" accept="application/json"></label>
+        <button class="btn ghost" type="button" data-theme-toggle aria-pressed="false"><span class="theme-icon" aria-hidden="true"></span><span data-theme-label>Light</span></button>
         <div class="cloud-user" id="cloudUser" hidden>
           <span id="cloudUserLabel">Cloud user</span>
           <b id="cloudRoleLabel">admin</b>
@@ -410,6 +415,8 @@
   </main>
 </div>
 
+<div class="nav-scrim" data-nav-scrim hidden></div>
+
 <div class="modal-backdrop" id="modalBackdrop" hidden>
   <div class="modal">
     <div class="modal-head"><h2 id="modalTitle">Dialog</h2><button id="modalCloseBtn" class="icon-btn">×</button></div>
@@ -450,7 +457,7 @@
         <div class="auth-card-head">
           <div class="brand">
             <div class="brand-symbol"><span></span><span></span><span></span><span></span></div>
-            <div><strong>NETOPS</strong><small>ENTERPRISE</small></div>
+            <div><strong>NET<em>OPS</em></strong><small>Enterprise</small></div>
           </div>
           <span class="cloud-chip">CLOUD READY</span>
         </div>

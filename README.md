@@ -56,6 +56,15 @@ The repository retains the original `agent/` implementation from NetOps Command 
 - CSP and browser security headers in deployment config
 - pinned Supabase JS client version
 
+## Interface design
+
+The UI shares one design language with the [portfolio](https://jimcamus.vercel.app/) and [CamusOS](https://github.com/Sachibara/CamusOS): charcoal surfaces, a single amber accent, Barlow Condensed display type, DM Sans for reading and DM Mono for labels.
+
+- **Tokens first.** Every colour, radius and shadow is a CSS custom property at the top of the stylesheet; the light theme only swaps tokens.
+- **Dark by default, light on request.** The toggle in the top bar stores the choice in `localStorage` (`camus-theme`); `ui.js` applies it before first paint and also drives the mobile navigation drawer.
+- **Self-hosted fonts.** Font files live in `assets/fonts/` (SIL Open Font License, see `assets/fonts/FONTS.md`), so there are no third-party font requests.
+- **Responsive.** The sidebar becomes a drawer below 900px, tables scroll inside their panels, and motion respects `prefers-reduced-motion`.
+
 ## Stack
 
 HTML5 · CSS3 · JavaScript · Python · FastAPI · SQLite · Supabase · ICMP/DNS/TCP/ARP diagnostics

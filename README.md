@@ -58,10 +58,11 @@ The repository retains the original `agent/` implementation from NetOps Command 
 
 ## Interface design
 
-The UI shares one design language with the [portfolio](https://jimcamus.vercel.app/) and [CamusOS](https://github.com/Sachibara/CamusOS): charcoal surfaces, a single amber accent, Barlow Condensed display type, DM Sans for reading and DM Mono for labels.
+NetOps has its own identity, built around what it does: a network operations console read at a glance by engineers.
 
-- **Tokens first.** Every colour, radius and shadow is a CSS custom property at the top of the stylesheet; the light theme only swaps tokens.
-- **Dark by default, light on request.** The toggle in the top bar stores the choice in `localStorage` (`camus-theme`); `ui.js` applies it before first paint and also drives the mobile navigation drawer.
+- **Instrument-first console.** Dark navy surfaces, cyan telemetry accent, tight radii, a faint grid and monospace labels for dense, scannable data.
+- **Two layers.** `styles.css` holds layout and components; `netops-console.css` holds the NOC identity (tokens, console styling, sign-in visual).
+- **Dark by default, light on request.** The top-bar toggle stores the choice in `localStorage` (`netops-theme`); `ui.js` applies it before first paint and drives the mobile navigation drawer.
 - **Self-hosted fonts.** Font files live in `assets/fonts/` (SIL Open Font License, see `assets/fonts/FONTS.md`), so there are no third-party font requests.
 - **Responsive.** The sidebar becomes a drawer below 900px, tables scroll inside their panels, and motion respects `prefers-reduced-motion`.
 

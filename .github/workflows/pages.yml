@@ -27,7 +27,7 @@ jobs:
       - name: Prepare static dashboard
         run: |
           mkdir -p public
-          cp index.html styles.css app.js ui.js demo-data.js public/
+          cp index.html styles.css netops-console.css app.js ui.js demo-data.js public/
           cp -r assets public/
           touch public/.nojekyll
 

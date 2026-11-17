@@ -168,3 +168,27 @@ tr:hover td{background:var(--accent-soft)}
   .topbar{min-height:66px}
 }
 @media(prefers-reduced-motion:reduce){.nav-btn,.btn{transition:none}}
+
+/* ---- Review pass: remove the last pieces inherited from the shared amber base ---- */
+/* Hero actions: the primary action must read as a cyan console control. */
+.hero-card .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+.hero-card .btn.primary:hover{background:var(--accent-dark);border-color:var(--accent-dark)}
+:root[data-theme="light"] .hero-card .btn.primary{background:#39d8e9;border-color:#39d8e9;color:#061824}
+
+/* Health score reads as an instrument gauge, not a banner. */
+.health-orb{position:relative;border:1px solid var(--line-strong);border-radius:var(--radius);background:
+  radial-gradient(circle at 50% 50%,var(--accent-soft),transparent 62%),var(--surface);color:var(--text)}
+.health-orb::before{content:"";position:absolute;inset:14px;border:1px dashed var(--accent-line);border-radius:50%;pointer-events:none}
+.health-orb strong{color:var(--accent-ink);text-shadow:0 0 22px var(--accent-soft)}
+.health-orb span{color:var(--muted)}
+
+/* Sign-in visual: every label, ring and node uses the console palette so nothing disappears on navy. */
+.auth-top span,.auth-top b,.auth-copy-block>p{color:#8fdfea}
+.auth-top i{background:#56e6a6;box-shadow:0 0 0 4px rgba(86,230,166,.16)}
+.auth-ring{border-color:rgba(103,232,245,.24)}
+.auth-core{border:1px solid #48d9e6;border-radius:6px;background:#0b3445;color:#67e8f5;box-shadow:0 0 34px rgba(57,216,233,.2)}
+.auth-sat{border:1px solid #2f7388;border-radius:3px;background:#0a2533;color:#b9f3fa}
+.auth-copy-block h2{color:#f2fcff}
+.auth-stats{border-top-color:rgba(103,232,245,.24)}
+.auth-stats span{color:#9eb9c8}
+.auth-stats b{color:#f2fcff}
